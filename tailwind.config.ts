@@ -57,6 +57,15 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Cherry custom colors
+        cherry: {
+          DEFAULT: "hsl(var(--cherry))",
+          dark: "hsl(var(--cherry-dark))",
+          light: "hsl(var(--cherry-light))",
+        },
+        gold: "hsl(var(--gold))",
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
       },
       borderRadius: {
         lg: "var(--radius)",
