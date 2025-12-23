@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import type { Tables } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { POSHeader } from "@/components/pos/POSHeader";
 import { CategoryTabs } from "@/components/pos/CategoryTabs";
@@ -27,9 +28,11 @@ const POS = () => {
   
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [checkoutCart, setCheckoutCart] = useState<CartItem[]>([]);
   const [orderType, setOrderType] = useState<OrderType>("dine_in");
   const [tableNumber, setTableNumber] = useState("");
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState<Tables<"orders"> | null>(null);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["menu-categories"],
@@ -127,9 +130,10 @@ const POS = () => {
         title: "Order Created!",
         description: `Order ${order.order_number} has been placed successfully.`,
       });
+      setCheckoutCart([...cart]);
+      setCompletedOrder(order);
       setCart([]);
       setTableNumber("");
-      setIsCheckoutOpen(false);
       queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
     onError: (error) => {
@@ -184,6 +188,18 @@ const POS = () => {
   const serviceCharge = subtotal * 0.10;
   const total = subtotal + vatAmount + serviceCharge;
 
+  // For receipt display after order completion
+  const receiptSubtotal = checkoutCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const receiptVat = receiptSubtotal * 0.075;
+  const receiptService = receiptSubtotal * 0.10;
+  const receiptTotal = receiptSubtotal + receiptVat + receiptService;
+
+  const handleCloseCheckout = () => {
+    setIsCheckoutOpen(false);
+    setCompletedOrder(null);
+    setCheckoutCart([]);
+  };
+
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
       {/* Left Panel - Menu */}
@@ -220,9 +236,17 @@ const POS = () => {
       <CheckoutDialog
         open={isCheckoutOpen}
         onOpenChange={setIsCheckoutOpen}
-        total={total}
+        total={completedOrder ? receiptTotal : total}
+        subtotal={completedOrder ? receiptSubtotal : subtotal}
+        vatAmount={completedOrder ? receiptVat : vatAmount}
+        serviceCharge={completedOrder ? receiptService : serviceCharge}
+        cart={completedOrder ? checkoutCart : cart}
+        orderType={orderType}
+        tableNumber={tableNumber}
         onConfirmPayment={(method) => createOrderMutation.mutate(method)}
         isProcessing={createOrderMutation.isPending}
+        completedOrder={completedOrder}
+        onClose={handleCloseCheckout}
       />
     </div>
   );

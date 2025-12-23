@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,14 +7,25 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Banknote, CreditCard, Building2, Smartphone, Loader2 } from "lucide-react";
+import { Banknote, CreditCard, Building2, Smartphone, Loader2, Printer, Check } from "lucide-react";
+import { Receipt } from "./Receipt";
+import type { CartItem } from "@/pages/POS";
 
 interface CheckoutDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   total: number;
+  subtotal: number;
+  vatAmount: number;
+  serviceCharge: number;
+  cart: CartItem[];
+  orderType: string;
+  tableNumber: string;
   onConfirmPayment: (method: string) => void;
   isProcessing: boolean;
+  completedOrder: { order_number: string } | null;
+  onClose: () => void;
+  cashierName?: string;
 }
 
 const paymentMethods = [
@@ -36,16 +47,138 @@ export const CheckoutDialog = ({
   open,
   onOpenChange,
   total,
+  subtotal,
+  vatAmount,
+  serviceCharge,
+  cart,
+  orderType,
+  tableNumber,
   onConfirmPayment,
   isProcessing,
+  completedOrder,
+  onClose,
+  cashierName,
 }: CheckoutDialogProps) => {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   const handleConfirm = () => {
     if (selectedMethod) {
       onConfirmPayment(selectedMethod);
     }
   };
+
+  const handlePrint = () => {
+    const printContent = receiptRef.current;
+    if (!printContent) return;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt - ${completedOrder?.order_number}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: 'Courier New', Courier, monospace;
+              padding: 10px;
+              max-width: 80mm;
+              margin: 0 auto;
+            }
+            .receipt { font-size: 12px; }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .font-bold { font-weight: bold; }
+            .text-xl { font-size: 18px; }
+            .text-base { font-size: 14px; }
+            .text-xs { font-size: 11px; }
+            .text-10 { font-size: 10px; }
+            .my-3 { margin: 10px 0; }
+            .mt-2 { margin-top: 8px; }
+            .mt-4 { margin-top: 16px; }
+            .space-y-1 > * + * { margin-top: 4px; }
+            .space-y-2 > * + * { margin-top: 8px; }
+            .flex { display: flex; justify-content: space-between; }
+            .border-dashed { border-top: 1px dashed #999; }
+            .border-solid { border-top: 1px solid #333; }
+            .gray { color: #666; }
+            .pl-4 { padding-left: 16px; }
+            @media print {
+              body { width: 80mm; }
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent.innerHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  };
+
+  const handleClose = () => {
+    setSelectedMethod(null);
+    onClose();
+  };
+
+  // Show receipt after successful payment
+  if (completedOrder) {
+    return (
+      <Dialog open={open} onOpenChange={() => handleClose()}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
+              <Check className="h-6 w-6 text-emerald-500" />
+              Payment Successful
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Receipt Preview */}
+            <div className="flex justify-center bg-muted/50 rounded-lg p-4 overflow-auto max-h-[400px]">
+              <Receipt
+                ref={receiptRef}
+                orderNumber={completedOrder.order_number}
+                orderType={orderType}
+                tableNumber={tableNumber || undefined}
+                items={cart}
+                subtotal={subtotal}
+                vatAmount={vatAmount}
+                serviceCharge={serviceCharge}
+                total={total}
+                paymentMethod={selectedMethod || "cash"}
+                cashierName={cashierName}
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleClose}
+              >
+                Close
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handlePrint}
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                Print Receipt
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
