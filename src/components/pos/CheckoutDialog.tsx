@@ -152,20 +152,30 @@ export const CheckoutDialog = ({
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3">
+                <Button
+                  className="flex-1"
+                  onClick={handlePrint}
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print Receipt
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={handlePrint}
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Reprint
+                </Button>
+              </div>
               <Button
                 variant="outline"
-                className="flex-1"
+                className="w-full"
                 onClick={handleClose}
               >
                 Close
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={handlePrint}
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                Print Receipt
               </Button>
             </div>
           </div>
