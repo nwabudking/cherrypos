@@ -33,4 +33,4 @@ export { default as Inventory } from '@/pages/Inventory';
 export { default as Staff } from '@/pages/Staff';
 export const Customers = () => <PlaceholderPage title="Customers" description="Customer management coming soon" />;
 export { default as Reports } from '@/pages/Reports';
-export const SettingsPage = () => <PlaceholderPage title="Settings" description="System settings coming soon" />;
+export { default as SettingsPage } from '@/pages/Settings';
