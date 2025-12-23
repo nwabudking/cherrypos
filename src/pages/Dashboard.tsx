@@ -1,5 +1,9 @@
+import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   DollarSign,
   ShoppingCart,
@@ -10,6 +14,7 @@ import {
   Clock,
   Utensils,
 } from 'lucide-react';
+import { format, startOfDay, endOfDay } from 'date-fns';
 
 interface KPICardProps {
   title: string;
@@ -18,9 +23,10 @@ interface KPICardProps {
   changeType?: 'positive' | 'negative' | 'neutral';
   icon: React.ElementType;
   iconColor?: string;
+  isLoading?: boolean;
 }
 
-const KPICard = ({ title, value, change, changeType = 'neutral', icon: Icon, iconColor }: KPICardProps) => (
+const KPICard = ({ title, value, change, changeType = 'neutral', icon: Icon, iconColor, isLoading }: KPICardProps) => (
   <Card className="bg-card border-border hover:border-primary/30 transition-colors">
     <CardHeader className="flex flex-row items-center justify-between pb-2">
       <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
@@ -29,44 +35,137 @@ const KPICard = ({ title, value, change, changeType = 'neutral', icon: Icon, ico
       </div>
     </CardHeader>
     <CardContent>
-      <div className="text-2xl font-bold text-foreground">{value}</div>
-      {change && (
-        <p className={`text-xs mt-1 ${
-          changeType === 'positive' ? 'text-success' :
-          changeType === 'negative' ? 'text-destructive' :
-          'text-muted-foreground'
-        }`}>
-          {change}
-        </p>
+      {isLoading ? (
+        <Skeleton className="h-8 w-24" />
+      ) : (
+        <>
+          <div className="text-2xl font-bold text-foreground">{value}</div>
+          {change && (
+            <p className={`text-xs mt-1 ${
+              changeType === 'positive' ? 'text-emerald-500' :
+              changeType === 'negative' ? 'text-destructive' :
+              'text-muted-foreground'
+            }`}>
+              {change}
+            </p>
+          )}
+        </>
       )}
     </CardContent>
   </Card>
 );
 
 const Dashboard = () => {
-  const { profile, role } = useAuth();
+  const { profile } = useAuth();
+  const today = new Date();
+  const todayStart = startOfDay(today);
+  const todayEnd = endOfDay(today);
 
-  // Mock data - will be replaced with real data later
-  const kpiData = {
-    dailySales: '₦485,200',
-    activeOrders: '12',
-    activeTables: '8/15',
-    lowStockItems: '5',
-  };
+  // Fetch today's orders with real-time subscription
+  const { data: todayOrders = [], isLoading: ordersLoading, refetch: refetchOrders } = useQuery({
+    queryKey: ['dashboard-orders', format(today, 'yyyy-MM-dd')],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*, order_items(*), payments(*)')
+        .gte('created_at', todayStart.toISOString())
+        .lte('created_at', todayEnd.toISOString())
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  const recentOrders = [
-    { id: 'ORD-001', table: 'Table 5', amount: '₦15,500', status: 'Preparing', time: '5 min ago' },
-    { id: 'ORD-002', table: 'Table 3', amount: '₦8,200', status: 'Served', time: '12 min ago' },
-    { id: 'ORD-003', table: 'Takeaway', amount: '₦22,000', status: 'Ready', time: '18 min ago' },
-    { id: 'ORD-004', table: 'Table 8', amount: '₦31,750', status: 'Pending', time: '25 min ago' },
-  ];
+  // Fetch low stock items
+  const { data: lowStockItems = [], isLoading: inventoryLoading, refetch: refetchInventory } = useQuery({
+    queryKey: ['dashboard-low-stock'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('is_active', true);
+      if (error) throw error;
+      return data.filter(item => item.current_stock <= item.min_stock_level);
+    },
+  });
 
-  const topSellingItems = [
-    { name: 'Jollof Rice & Chicken', sold: 45, revenue: '₦180,000' },
-    { name: 'Chapman', sold: 38, revenue: '₦76,000' },
-    { name: 'Pepper Soup', sold: 32, revenue: '₦96,000' },
-    { name: 'Suya Platter', sold: 28, revenue: '₦112,000' },
-  ];
+  // Fetch menu items count
+  const { data: menuItemsCount = 0 } = useQuery({
+    queryKey: ['dashboard-menu-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('menu_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  // Real-time subscription for orders
+  useEffect(() => {
+    const channel = supabase
+      .channel('dashboard-orders')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => {
+          refetchOrders();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inventory_items' },
+        () => {
+          refetchInventory();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetchOrders, refetchInventory]);
+
+  // Calculate metrics
+  const completedOrders = todayOrders.filter(o => o.status === 'completed');
+  const activeOrders = todayOrders.filter(o => ['pending', 'preparing', 'ready'].includes(o.status));
+  const dailySales = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+  const totalOrders = completedOrders.length;
+  const avgOrderValue = totalOrders > 0 ? dailySales / totalOrders : 0;
+
+  // Get top selling items from today's orders
+  const itemSales: Record<string, { name: string; quantity: number; revenue: number }> = {};
+  todayOrders.forEach(order => {
+    order.order_items?.forEach((item: any) => {
+      if (!itemSales[item.item_name]) {
+        itemSales[item.item_name] = { name: item.item_name, quantity: 0, revenue: 0 };
+      }
+      itemSales[item.item_name].quantity += item.quantity;
+      itemSales[item.item_name].revenue += Number(item.total_price);
+    });
+  });
+
+  const topSellingItems = Object.values(itemSales)
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 4);
+
+  // Recent orders
+  const recentOrders = todayOrders.slice(0, 4).map(order => ({
+    id: order.order_number,
+    table: order.table_number || (order.order_type === 'takeaway' ? 'Takeaway' : order.order_type === 'delivery' ? 'Delivery' : 'Bar'),
+    amount: `₦${Number(order.total_amount).toLocaleString()}`,
+    status: order.status.charAt(0).toUpperCase() + order.status.slice(1),
+    time: getTimeAgo(new Date(order.created_at!)),
+  }));
+
+  function getTimeAgo(date: Date) {
+    const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ago`;
+  }
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -74,6 +173,8 @@ const Dashboard = () => {
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
   };
+
+  const isLoading = ordersLoading || inventoryLoading;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -91,32 +192,36 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Today's Sales"
-          value={kpiData.dailySales}
-          change="+12.5% from yesterday"
+          value={`₦${dailySales.toLocaleString()}`}
+          change={`${completedOrders.length} orders completed`}
           changeType="positive"
           icon={DollarSign}
           iconColor="gradient-cherry"
+          isLoading={isLoading}
         />
         <KPICard
           title="Active Orders"
-          value={kpiData.activeOrders}
-          change="3 pending preparation"
+          value={activeOrders.length.toString()}
+          change={`${activeOrders.filter(o => o.status === 'pending').length} pending`}
           changeType="neutral"
           icon={ShoppingCart}
+          isLoading={isLoading}
         />
         <KPICard
-          title="Tables Occupied"
-          value={kpiData.activeTables}
-          change="53% occupancy"
+          title="Menu Items"
+          value={menuItemsCount.toString()}
+          change="Items available"
           changeType="neutral"
           icon={Grid3X3}
+          isLoading={isLoading}
         />
         <KPICard
           title="Low Stock Alerts"
-          value={kpiData.lowStockItems}
-          change="Needs attention"
-          changeType="negative"
+          value={lowStockItems.length.toString()}
+          change={lowStockItems.length > 0 ? "Needs attention" : "All stocked"}
+          changeType={lowStockItems.length > 0 ? "negative" : "positive"}
           icon={AlertTriangle}
+          isLoading={isLoading}
         />
       </div>
 
@@ -131,35 +236,43 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Utensils className="w-4 h-4 text-primary" />
+            {isLoading ? (
+              <div className="space-y-4">
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+              </div>
+            ) : recentOrders.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No orders yet today</p>
+            ) : (
+              <div className="space-y-4">
+                {recentOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Utensils className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{order.id}</p>
+                        <p className="text-sm text-muted-foreground">{order.table}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{order.id}</p>
-                      <p className="text-sm text-muted-foreground">{order.table}</p>
+                    <div className="text-right">
+                      <p className="font-medium text-foreground">{order.amount}</p>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        order.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-500' :
+                        order.status === 'Ready' ? 'bg-amber-500/20 text-amber-500' :
+                        order.status === 'Preparing' ? 'bg-primary/20 text-primary' :
+                        'bg-muted text-muted-foreground'
+                      }`}>
+                        {order.status}
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-foreground">{order.amount}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      order.status === 'Served' ? 'bg-success/20 text-success' :
-                      order.status === 'Ready' ? 'bg-gold/20 text-gold' :
-                      order.status === 'Preparing' ? 'bg-primary/20 text-primary' :
-                      'bg-muted text-muted-foreground'
-                    }`}>
-                      {order.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -172,30 +285,38 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {topSellingItems.map((item, index) => (
-                <div
-                  key={item.name}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                      index === 0 ? 'bg-gold/20 text-gold' :
-                      index === 1 ? 'bg-muted-foreground/20 text-muted-foreground' :
-                      index === 2 ? 'bg-primary/20 text-primary' :
-                      'bg-muted text-muted-foreground'
-                    }`}>
-                      {index + 1}
+            {isLoading ? (
+              <div className="space-y-4">
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+              </div>
+            ) : topSellingItems.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No sales yet today</p>
+            ) : (
+              <div className="space-y-4">
+                {topSellingItems.map((item, index) => (
+                  <div
+                    key={item.name}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                        index === 0 ? 'bg-amber-500/20 text-amber-500' :
+                        index === 1 ? 'bg-muted-foreground/20 text-muted-foreground' :
+                        index === 2 ? 'bg-primary/20 text-primary' :
+                        'bg-muted text-muted-foreground'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{item.name}</p>
+                        <p className="text-sm text-muted-foreground">{item.quantity} sold</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">{item.sold} sold</p>
-                    </div>
+                    <p className="font-medium text-foreground">₦{item.revenue.toLocaleString()}</p>
                   </div>
-                  <p className="font-medium text-foreground">{item.revenue}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -206,8 +327,10 @@ const Dashboard = () => {
           <div className="flex items-center gap-3">
             <Users className="w-8 h-8 text-primary" />
             <div>
-              <p className="text-2xl font-bold text-foreground">127</p>
-              <p className="text-sm text-muted-foreground">Customers Today</p>
+              {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                <p className="text-2xl font-bold text-foreground">{todayOrders.length}</p>
+              )}
+              <p className="text-sm text-muted-foreground">Total Orders</p>
             </div>
           </div>
         </Card>
@@ -215,8 +338,10 @@ const Dashboard = () => {
           <div className="flex items-center gap-3">
             <ShoppingCart className="w-8 h-8 text-primary" />
             <div>
-              <p className="text-2xl font-bold text-foreground">48</p>
-              <p className="text-sm text-muted-foreground">Orders Completed</p>
+              {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                <p className="text-2xl font-bold text-foreground">{completedOrders.length}</p>
+              )}
+              <p className="text-sm text-muted-foreground">Completed</p>
             </div>
           </div>
         </Card>
@@ -224,17 +349,23 @@ const Dashboard = () => {
           <div className="flex items-center gap-3">
             <DollarSign className="w-8 h-8 text-primary" />
             <div>
-              <p className="text-2xl font-bold text-foreground">₦10,108</p>
-              <p className="text-sm text-muted-foreground">Avg. Order Value</p>
+              {isLoading ? <Skeleton className="h-8 w-16" /> : (
+                <p className="text-2xl font-bold text-foreground">
+                  ₦{avgOrderValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">Avg. Order</p>
             </div>
           </div>
         </Card>
         <Card className="bg-card border-border p-4">
           <div className="flex items-center gap-3">
-            <Clock className="w-8 h-8 text-primary" />
+            <AlertTriangle className={`w-8 h-8 ${lowStockItems.length > 0 ? 'text-destructive' : 'text-emerald-500'}`} />
             <div>
-              <p className="text-2xl font-bold text-foreground">18 min</p>
-              <p className="text-sm text-muted-foreground">Avg. Prep Time</p>
+              {isLoading ? <Skeleton className="h-8 w-12" /> : (
+                <p className="text-2xl font-bold text-foreground">{lowStockItems.length}</p>
+              )}
+              <p className="text-sm text-muted-foreground">Low Stock</p>
             </div>
           </div>
         </Card>
