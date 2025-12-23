@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   ShoppingCart,
   ClipboardList,
+  History,
   Grid3X3,
   UtensilsCrossed,
   Wine,
@@ -40,6 +41,7 @@ const mainNavItems: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'POS', url: '/pos', icon: ShoppingCart, roles: ['super_admin', 'manager', 'cashier'] },
   { title: 'Orders', url: '/orders', icon: ClipboardList },
+  { title: 'Order History', url: '/order-history', icon: History, roles: ['super_admin', 'manager', 'cashier'] },
   { title: 'Tables', url: '/tables', icon: Grid3X3, roles: ['super_admin', 'manager', 'cashier'] },
 ];
 
