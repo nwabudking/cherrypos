@@ -28,7 +28,7 @@ export const Tables = () => <PlaceholderPage title="Tables" description="Table m
 export { default as Menu } from '@/pages/MenuManagement';
 export const Bar = () => <PlaceholderPage title="Bar Orders" description="Bar management coming soon" />;
 export const Kitchen = () => <PlaceholderPage title="Kitchen Display" description="Kitchen display coming soon" />;
-export const Inventory = () => <PlaceholderPage title="Inventory" description="Inventory management coming soon" />;
+export { default as Inventory } from '@/pages/Inventory';
 export { default as Staff } from '@/pages/Staff';
 export const Customers = () => <PlaceholderPage title="Customers" description="Customer management coming soon" />;
 export { default as Reports } from '@/pages/Reports';

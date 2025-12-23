@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      inventory_items: {
+        Row: {
+          category: string | null
+          cost_per_unit: number | null
+          created_at: string | null
+          current_stock: number
+          id: string
+          is_active: boolean | null
+          min_stock_level: number
+          name: string
+          supplier: string | null
+          unit: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          cost_per_unit?: number | null
+          created_at?: string | null
+          current_stock?: number
+          id?: string
+          is_active?: boolean | null
+          min_stock_level?: number
+          name: string
+          supplier?: string | null
+          unit?: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          cost_per_unit?: number | null
+          created_at?: string | null
+          current_stock?: number
+          id?: string
+          is_active?: boolean | null
+          min_stock_level?: number
+          name?: string
+          supplier?: string | null
+          unit?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       menu_categories: {
         Row: {
           created_at: string | null
@@ -257,6 +299,53 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      stock_movements: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          inventory_item_id: string
+          movement_type: string
+          new_stock: number
+          notes: string | null
+          previous_stock: number
+          quantity: number
+          reference: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          inventory_item_id: string
+          movement_type: string
+          new_stock: number
+          notes?: string | null
+          previous_stock: number
+          quantity: number
+          reference?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          inventory_item_id?: string
+          movement_type?: string
+          new_stock?: number
+          notes?: string | null
+          previous_stock?: number
+          quantity?: number
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
