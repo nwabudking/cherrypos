@@ -29,7 +29,7 @@ export { default as Menu } from '@/pages/MenuManagement';
 export const Bar = () => <PlaceholderPage title="Bar Orders" description="Bar management coming soon" />;
 export const Kitchen = () => <PlaceholderPage title="Kitchen Display" description="Kitchen display coming soon" />;
 export const Inventory = () => <PlaceholderPage title="Inventory" description="Inventory management coming soon" />;
-export const Staff = () => <PlaceholderPage title="Staff" description="Staff management coming soon" />;
+export { default as Staff } from '@/pages/Staff';
 export const Customers = () => <PlaceholderPage title="Customers" description="Customer management coming soon" />;
 export const Reports = () => <PlaceholderPage title="Reports" description="Reports & analytics coming soon" />;
 export const SettingsPage = () => <PlaceholderPage title="Settings" description="System settings coming soon" />;
