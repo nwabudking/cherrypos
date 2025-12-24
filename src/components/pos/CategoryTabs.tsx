@@ -24,7 +24,7 @@ export const CategoryTabs = ({
   onSearchChange,
 }: CategoryTabsProps) => {
   return (
-    <div className="border-b border-border bg-muted/30">
+    <div className="border-b border-border bg-muted/30 shrink-0">
       <div className="p-3 pb-0">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -36,8 +36,8 @@ export const CategoryTabs = ({
           />
         </div>
       </div>
-      <ScrollArea className="w-full">
-        <div className="flex gap-2 p-3">
+      <ScrollArea className="w-full whitespace-nowrap">
+        <div className="flex gap-2 p-3 w-max">
           <Button
             variant={selectedCategory === null ? "default" : "ghost"}
             size="sm"
@@ -58,7 +58,7 @@ export const CategoryTabs = ({
             </Button>
           ))}
         </div>
-        <ScrollBar orientation="horizontal" />
+        <ScrollBar orientation="horizontal" className="h-2" />
       </ScrollArea>
     </div>
   );
