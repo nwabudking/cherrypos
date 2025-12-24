@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Database, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, Database, CheckCircle2, AlertCircle, Upload, FileJson } from "lucide-react";
 import { Navigate } from "react-router-dom";
+import { Textarea } from "@/components/ui/textarea";
 
 interface MigrationResult {
   categories: number;
@@ -13,25 +14,74 @@ interface MigrationResult {
   errors: string[];
 }
 
+interface CategoryData {
+  category_id: number;
+  name: string;
+}
+
+interface ItemData {
+  item_id: number;
+  name: string;
+  description?: string;
+  category?: number;
+  cost_price?: number;
+  unit_price: number;
+}
+
 export default function Migration() {
-  const { user, role } = useAuth();
+  const { role } = useAuth();
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<MigrationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [jsonData, setJsonData] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Only super_admin can access this page
   if (role !== "super_admin") {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setJsonData(content);
+      toast.success("File loaded successfully");
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read file");
+    };
+    reader.readAsText(file);
+  };
+
   const runMigration = async () => {
+    if (!jsonData.trim()) {
+      toast.error("Please provide migration data first");
+      return;
+    }
+
+    let parsedData;
+    try {
+      parsedData = JSON.parse(jsonData);
+      if (!parsedData.categories || !parsedData.items) {
+        throw new Error("JSON must contain 'categories' and 'items' arrays");
+      }
+    } catch (e) {
+      toast.error(`Invalid JSON: ${e instanceof Error ? e.message : 'Parse error'}`);
+      return;
+    }
+
     setIsRunning(true);
     setResult(null);
     setError(null);
 
     try {
-      // supabase.functions.invoke automatically includes the auth token
-      const response = await supabase.functions.invoke("migrate-openpos");
+      const response = await supabase.functions.invoke("migrate-openpos", {
+        body: parsedData,
+      });
 
       if (response.error) {
         throw new Error(response.error.message);
@@ -52,13 +102,24 @@ export default function Migration() {
     }
   };
 
+  const sampleData = {
+    categories: [
+      { category_id: 1, name: "Drinks" },
+      { category_id: 2, name: "Food" }
+    ],
+    items: [
+      { item_id: 1, name: "Coca Cola", category: 1, unit_price: 500, cost_price: 200 },
+      { item_id: 2, name: "Jollof Rice", category: 2, unit_price: 1500, cost_price: 800, description: "Nigerian Jollof Rice" }
+    ]
+  };
+
   return (
     <div className="min-h-screen bg-background p-8">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-3xl mx-auto space-y-6">
         <div>
           <h1 className="text-3xl font-bold">OpenPOS Migration</h1>
           <p className="text-muted-foreground mt-2">
-            Migrate data from your external MySQL database to this system.
+            Import categories and menu items from your OpenPOS database export.
           </p>
         </div>
 
@@ -66,26 +127,64 @@ export default function Migration() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="h-5 w-5" />
-              Source Database
+              Migration Data
             </CardTitle>
             <CardDescription>
-              suenoxng_cherrypos @ suenox.ng
+              Export your OpenPOS data as JSON and paste it here, or upload a JSON file.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>This migration will:</p>
-              <ul className="list-disc list-inside ml-2 space-y-1">
-                <li>Import categories from ospos_categories</li>
-                <li>Import menu items from ospos_items</li>
-                <li>Skip items that already exist</li>
-                <li>Map categories to menu items</li>
-              </ul>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p><strong>Required JSON format:</strong></p>
+              <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto">
+{JSON.stringify(sampleData, null, 2)}
+              </pre>
             </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">To export from phpMyAdmin, run these queries:</p>
+              <div className="bg-muted p-3 rounded-lg text-xs font-mono">
+                <p className="text-muted-foreground mb-1">-- Categories:</p>
+                <p>SELECT category_id, name FROM ospos_categories WHERE deleted = 0;</p>
+                <p className="text-muted-foreground mb-1 mt-2">-- Items:</p>
+                <p>SELECT item_id, name, description, category, cost_price, unit_price FROM ospos_items WHERE deleted = 0;</p>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Upload JSON File
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setJsonData(JSON.stringify(sampleData, null, 2))}
+              >
+                <FileJson className="mr-2 h-4 w-4" />
+                Load Sample Data
+              </Button>
+            </div>
+
+            <Textarea
+              placeholder="Paste your JSON data here..."
+              className="min-h-[200px] font-mono text-sm"
+              value={jsonData}
+              onChange={(e) => setJsonData(e.target.value)}
+            />
 
             <Button 
               onClick={runMigration} 
-              disabled={isRunning}
+              disabled={isRunning || !jsonData.trim()}
               className="w-full"
               size="lg"
             >
