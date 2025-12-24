@@ -15,19 +15,30 @@ interface ItemData {
   item_id: number;
   name: string;
   description?: string;
-  category?: string | number; // Can be category name or ID
+  category?: string | number;
   cost_price?: number;
   unit_price: number;
+}
+
+interface EmployeeData {
+  person_id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  username: string;
+  password?: string;
 }
 
 interface MigrationPayload {
   categories: CategoryData[];
   items: ItemData[];
+  employees?: EmployeeData[];
 }
 
 interface MigrationResult {
   categories: number;
   menuItems: number;
+  users: number;
   errors: string[];
 }
 
@@ -80,6 +91,7 @@ serve(async (req) => {
     const result: MigrationResult = {
       categories: 0,
       menuItems: 0,
+      users: 0,
       errors: [],
     };
 
@@ -164,6 +176,59 @@ serve(async (req) => {
     }
 
     console.log(`Migrated ${result.menuItems} menu items`);
+
+    // Step 3: Migrate employees/users
+    if (payload.employees && payload.employees.length > 0) {
+      console.log(`Processing ${payload.employees.length} employees`);
+      
+      for (const emp of payload.employees) {
+        // Check if user already exists by email
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("email", emp.email)
+          .maybeSingle();
+
+        if (existingProfile) {
+          result.errors.push(`User ${emp.email}: already exists, skipped`);
+          continue;
+        }
+
+        // Generate a temporary password for new users
+        const tempPassword = `Temp${Math.random().toString(36).slice(2, 10)}!`;
+        
+        // Create auth user
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email: emp.email,
+          password: emp.password || tempPassword,
+          email_confirm: true,
+          user_metadata: {
+            full_name: `${emp.first_name} ${emp.last_name}`.trim(),
+          },
+        });
+
+        if (authError) {
+          result.errors.push(`User ${emp.email}: ${authError.message}`);
+          continue;
+        }
+
+        if (authData.user) {
+          // Profile and role are auto-created by the handle_new_user trigger
+          // But let's update the full_name to be sure
+          await supabase
+            .from("profiles")
+            .update({ 
+              full_name: `${emp.first_name} ${emp.last_name}`.trim(),
+            })
+            .eq("id", authData.user.id);
+
+          result.users++;
+          result.errors.push(`User ${emp.email}: created with temp password (user should reset)`);
+        }
+      }
+      
+      console.log(`Migrated ${result.users} users`);
+    }
 
     return new Response(
       JSON.stringify({

@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 interface MigrationResult {
   categories: number;
   menuItems: number;
+  users: number;
   errors: string[];
 }
 
@@ -27,6 +28,15 @@ interface ItemData {
   category?: string;
   cost_price?: number;
   unit_price: number;
+}
+
+interface EmployeeData {
+  person_id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  username: string;
+  password?: string;
 }
 
 // Parse SQL INSERT statements for ospos_items
@@ -63,6 +73,68 @@ function parseItemsFromSQL(sql: string): ItemData[] {
   }
   
   return items;
+}
+
+// Parse SQL INSERT statements for ospos_employees
+function parseEmployeesFromSQL(sql: string): EmployeeData[] {
+  const employees: EmployeeData[] = [];
+  
+  // Match INSERT INTO `ospos_employees` or ospos_people statements
+  const insertPattern = /INSERT\s+INTO\s+`?ospos_employees`?\s*\([^)]+\)\s*VALUES\s*((?:\([^)]+\),?\s*)+)/gi;
+  const matches = sql.matchAll(insertPattern);
+  
+  for (const match of matches) {
+    const valuesStr = match[1];
+    const tuplePattern = /\(([^)]+)\)/g;
+    const tuples = valuesStr.matchAll(tuplePattern);
+    
+    for (const tuple of tuples) {
+      const values = parseCSVValues(tuple[1]);
+      // ospos_employees columns: person_id, first_name, last_name, email, ...
+      if (values.length >= 4) {
+        const employee: EmployeeData = {
+          person_id: parseInt(values[0]) || employees.length + 1,
+          first_name: cleanSQLString(values[1]),
+          last_name: cleanSQLString(values[2]),
+          email: cleanSQLString(values[3]),
+          username: cleanSQLString(values[4] || values[3]),
+        };
+        if (employee.email && employee.email.includes('@')) {
+          employees.push(employee);
+        }
+      }
+    }
+  }
+  
+  // Also try ospos_people table which some OpenPOS versions use
+  const peoplePattern = /INSERT\s+INTO\s+`?ospos_people`?\s*\([^)]+\)\s*VALUES\s*((?:\([^)]+\),?\s*)+)/gi;
+  const peopleMatches = sql.matchAll(peoplePattern);
+  
+  for (const match of peopleMatches) {
+    const valuesStr = match[1];
+    const tuplePattern = /\(([^)]+)\)/g;
+    const tuples = valuesStr.matchAll(tuplePattern);
+    
+    for (const tuple of tuples) {
+      const values = parseCSVValues(tuple[1]);
+      if (values.length >= 4) {
+        const employee: EmployeeData = {
+          person_id: parseInt(values[0]) || employees.length + 1,
+          first_name: cleanSQLString(values[1]),
+          last_name: cleanSQLString(values[2]),
+          email: cleanSQLString(values[3]),
+          username: cleanSQLString(values[4] || values[3]),
+        };
+        // Avoid duplicates
+        if (employee.email && employee.email.includes('@') && 
+            !employees.some(e => e.email === employee.email)) {
+          employees.push(employee);
+        }
+      }
+    }
+  }
+  
+  return employees;
 }
 
 // Parse SQL INSERT statements for categories (ospos uses 'category' field in items table)
@@ -179,18 +251,23 @@ export default function Migration() {
       return;
     }
 
-    // Parse SQL to extract items and categories
+    // Parse SQL to extract items, categories, and employees
     const items = parseItemsFromSQL(sqlData);
     const categories = parseCategoriesFromItems(items);
+    const employees = parseEmployeesFromSQL(sqlData);
 
-    if (items.length === 0) {
-      toast.error("No items found in SQL dump. Make sure the file contains INSERT statements for ospos_items table.");
+    if (items.length === 0 && employees.length === 0) {
+      toast.error("No data found in SQL dump. Make sure the file contains INSERT statements.");
       return;
     }
 
-    toast.info(`Found ${categories.length} categories and ${items.length} items to migrate`);
+    const parts = [];
+    if (categories.length > 0) parts.push(`${categories.length} categories`);
+    if (items.length > 0) parts.push(`${items.length} items`);
+    if (employees.length > 0) parts.push(`${employees.length} users`);
+    toast.info(`Found ${parts.join(', ')} to migrate`);
 
-    const payload = { categories, items };
+    const payload = { categories, items, employees };
     await executeMigration(payload);
   };
 
@@ -214,7 +291,7 @@ export default function Migration() {
     await executeMigration(parsedData);
   };
 
-  const executeMigration = async (payload: { categories: CategoryData[]; items: ItemData[] }) => {
+  const executeMigration = async (payload: { categories: CategoryData[]; items: ItemData[]; employees?: EmployeeData[] }) => {
     setIsRunning(true);
     setResult(null);
     setError(null);
@@ -423,6 +500,7 @@ export default function Migration() {
             <CardContent className="space-y-2">
               <p><strong>Categories imported:</strong> {result.categories}</p>
               <p><strong>Menu items imported:</strong> {result.menuItems}</p>
+              <p><strong>Users imported:</strong> {result.users || 0}</p>
               {result.errors.length > 0 && (
                 <div className="mt-4">
                   <p className="font-medium text-amber-600">Warnings:</p>
