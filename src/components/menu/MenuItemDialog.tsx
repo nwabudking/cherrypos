@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, X } from "lucide-react";
+import { Loader2, Upload, X, Package } from "lucide-react";
 
 interface MenuItemDialogProps {
   open: boolean;
@@ -35,6 +35,8 @@ interface MenuItemDialogProps {
     is_available: boolean;
     is_active: boolean;
     category_id: string | null;
+    inventory_item_id?: string | null;
+    track_inventory?: boolean;
   } | null;
 }
 
@@ -52,6 +54,8 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
     image_url: "",
     is_available: true,
     is_active: true,
+    inventory_item_id: "",
+    track_inventory: false,
   });
 
   useEffect(() => {
@@ -65,6 +69,8 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
         image_url: editingItem.image_url || "",
         is_available: editingItem.is_available,
         is_active: editingItem.is_active,
+        inventory_item_id: editingItem.inventory_item_id || "",
+        track_inventory: editingItem.track_inventory || false,
       });
     } else {
       setForm({
@@ -76,6 +82,8 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
         image_url: "",
         is_available: true,
         is_active: true,
+        inventory_item_id: "",
+        track_inventory: false,
       });
     }
   }, [editingItem, open]);
@@ -92,6 +100,19 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
     },
   });
 
+  const { data: inventoryItems = [] } = useQuery({
+    queryKey: ["inventory-items-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory_items")
+        .select("id, name, current_stock, unit")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -103,6 +124,8 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
         image_url: form.image_url || null,
         is_available: form.is_available,
         is_active: form.is_active,
+        inventory_item_id: form.inventory_item_id || null,
+        track_inventory: form.track_inventory,
       };
 
       if (editingItem) {
@@ -282,6 +305,48 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Inventory Tracking */}
+          <div className="space-y-3 p-4 rounded-lg border border-border bg-muted/30">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-muted-foreground" />
+              <Label className="font-medium">Inventory Tracking</Label>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={form.track_inventory}
+                onCheckedChange={(checked) =>
+                  setForm((prev) => ({ ...prev, track_inventory: checked }))
+                }
+              />
+              <Label className="text-sm">Track stock for this item</Label>
+            </div>
+
+            {form.track_inventory && (
+              <div className="space-y-2">
+                <Label>Link to Inventory Item</Label>
+                <Select
+                  value={form.inventory_item_id}
+                  onValueChange={(value) => setForm((prev) => ({ ...prev, inventory_item_id: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select inventory item" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {inventoryItems.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.name} ({item.current_stock} {item.unit})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  When linked, this menu item will be automatically marked unavailable when stock runs out.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Prices */}

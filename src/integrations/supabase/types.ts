@@ -99,10 +99,12 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          inventory_item_id: string | null
           is_active: boolean | null
           is_available: boolean | null
           name: string
           price: number
+          track_inventory: boolean | null
           updated_at: string | null
         }
         Insert: {
@@ -112,10 +114,12 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          inventory_item_id?: string | null
           is_active?: boolean | null
           is_available?: boolean | null
           name: string
           price: number
+          track_inventory?: boolean | null
           updated_at?: string | null
         }
         Update: {
@@ -125,10 +129,12 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          inventory_item_id?: string | null
           is_active?: boolean | null
           is_available?: boolean | null
           name?: string
           price?: number
+          track_inventory?: boolean | null
           updated_at?: string | null
         }
         Relationships: [
@@ -137,6 +143,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
             referencedColumns: ["id"]
           },
         ]

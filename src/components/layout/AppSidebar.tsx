@@ -29,6 +29,7 @@ import {
   Settings,
   Cherry,
   DatabaseBackup,
+  FileText,
 } from 'lucide-react';
 
 interface NavItem {
@@ -43,6 +44,7 @@ const mainNavItems: NavItem[] = [
   { title: 'POS', url: '/pos', icon: ShoppingCart, roles: ['super_admin', 'manager', 'cashier'] },
   { title: 'Orders', url: '/orders', icon: ClipboardList },
   { title: 'Order History', url: '/order-history', icon: History, roles: ['super_admin', 'manager', 'cashier'] },
+  { title: 'EOD Report', url: '/eod-report', icon: FileText, roles: ['super_admin', 'manager', 'cashier'] },
   { title: 'Tables', url: '/tables', icon: Grid3X3, roles: ['super_admin', 'manager', 'cashier'] },
 ];
 

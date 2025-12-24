@@ -53,7 +53,7 @@ const POS = () => {
     queryFn: async () => {
       let query = supabase
         .from("menu_items")
-        .select("*, menu_categories(name)")
+        .select("*, menu_categories(name), inventory_items:inventory_item_id(id, current_stock, unit)")
         .eq("is_active", true)
         .eq("is_available", true);
       
@@ -69,6 +69,19 @@ const POS = () => {
 
   const createOrderMutation = useMutation({
     mutationFn: async (paymentMethod: string) => {
+      // Validate stock before creating order
+      for (const cartItem of cart) {
+        const menuItem = menuItems.find((m) => m.id === cartItem.menuItemId);
+        if (menuItem?.track_inventory && menuItem?.inventory_items) {
+          const invItem = menuItem.inventory_items;
+          if (invItem.current_stock < cartItem.quantity) {
+            throw new Error(
+              `Insufficient stock for "${cartItem.name}". Available: ${invItem.current_stock}`
+            );
+          }
+        }
+      }
+
       const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const totalAmount = subtotal;
 
@@ -86,6 +99,7 @@ const POS = () => {
           vat_amount: 0,
           service_charge: 0,
           total_amount: totalAmount,
+          status: "completed",
           created_by: user?.id,
         })
         .select()
@@ -109,6 +123,33 @@ const POS = () => {
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
+
+      // Deduct stock for tracked items
+      for (const cartItem of cart) {
+        const menuItem = menuItems.find((m) => m.id === cartItem.menuItemId);
+        if (menuItem?.track_inventory && menuItem?.inventory_item_id) {
+          const invItem = menuItem.inventory_items;
+          const newStock = invItem.current_stock - cartItem.quantity;
+          
+          // Update inventory stock
+          await supabase
+            .from("inventory_items")
+            .update({ current_stock: newStock })
+            .eq("id", menuItem.inventory_item_id);
+
+          // Log stock movement
+          await supabase.from("stock_movements").insert({
+            inventory_item_id: menuItem.inventory_item_id,
+            movement_type: "out",
+            quantity: cartItem.quantity,
+            previous_stock: invItem.current_stock,
+            new_stock: newStock,
+            notes: `Sold via POS - Order ${orderNumber}`,
+            reference: order.id,
+            created_by: user?.id,
+          });
+        }
+      }
 
       // Create payment
       const { error: paymentError } = await supabase
@@ -134,11 +175,13 @@ const POS = () => {
       setCart([]);
       setTableNumber("");
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["menu-items"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to create order. Please try again.",
+        description: error.message || "Failed to create order. Please try again.",
         variant: "destructive",
       });
       console.error(error);
@@ -146,6 +189,20 @@ const POS = () => {
   });
 
   const addToCart = (item: { id: string; name: string; price: number }) => {
+    // Check stock availability for tracked items
+    const menuItem = menuItems.find((m) => m.id === item.id);
+    if (menuItem?.track_inventory && menuItem?.inventory_items) {
+      const currentInCart = cart.find((c) => c.menuItemId === item.id)?.quantity || 0;
+      if (currentInCart + 1 > menuItem.inventory_items.current_stock) {
+        toast({
+          title: "Out of Stock",
+          description: `Only ${menuItem.inventory_items.current_stock} available for ${item.name}`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setCart((prev) => {
       const existing = prev.find((i) => i.menuItemId === item.id);
       if (existing) {

@@ -8,6 +8,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Migration from "./pages/Migration";
+import EODReport from "./pages/EODReport";
 import { POS, Orders, OrderHistory, Tables, Menu, Bar, Kitchen, Inventory, Staff, Customers, Reports, SettingsPage } from "./pages/modules";
 import NotFound from "./pages/NotFound";
 
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/pos" element={<POS />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/order-history" element={<OrderHistory />} />
+              <Route path="/eod-report" element={<EODReport />} />
               <Route path="/tables" element={<Tables />} />
               <Route path="/menu" element={<Menu />} />
               <Route path="/bar" element={<Bar />} />
