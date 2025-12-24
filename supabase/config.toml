@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.import-staff]
 verify_jwt = false
+
+[functions.manage-staff]
+verify_jwt = false
