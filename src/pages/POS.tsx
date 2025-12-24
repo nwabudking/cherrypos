@@ -62,15 +62,7 @@ const POS = () => {
       
       const { data, error } = await query.order("name");
       if (error) throw error;
-      
-      // Filter: only show items with stock > 0 (inventory is source of truth)
-      return data.filter(item => {
-        if (item.track_inventory && item.inventory_items) {
-          return item.inventory_items.current_stock > 0;
-        }
-        // Non-tracked items are always available
-        return item.is_available;
-      });
+      return data;
     },
   });
 
