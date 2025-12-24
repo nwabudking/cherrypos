@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Plus, AlertCircle } from "lucide-react";
+import { Plus, AlertCircle, AlertTriangle } from "lucide-react";
 
 interface MenuItem {
   id: string;
@@ -51,13 +51,21 @@ export const MenuGrid = ({ items, onAddToCart }: MenuGridProps) => {
           return (
             <Card
               key={item.id}
-              className={`transition-all duration-200 group ${
+              className={`transition-all duration-200 group relative ${
                 isOutOfStock
                   ? "opacity-50 cursor-not-allowed"
+                  : isLowStock
+                  ? "cursor-pointer border-amber-500/50 hover:border-amber-500 hover:shadow-lg hover:shadow-amber-500/10 active:scale-95"
                   : "cursor-pointer hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 active:scale-95"
               }`}
               onClick={() => !isOutOfStock && onAddToCart({ id: item.id, name: item.name, price: Number(item.price) })}
             >
+              {/* Low stock corner indicator */}
+              {isLowStock && (
+                <div className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-amber-500 flex items-center justify-center shadow-md animate-pulse">
+                  <AlertTriangle className="h-3.5 w-3.5 text-white" />
+                </div>
+              )}
               <CardContent className="p-4 flex flex-col h-full min-h-[120px]">
                 <div className="flex-1">
                   <p className={`font-medium text-sm leading-tight line-clamp-2 transition-colors ${
@@ -79,7 +87,8 @@ export const MenuGrid = ({ items, onAddToCart }: MenuGridProps) => {
                     </Badge>
                   )}
                   {isLowStock && (
-                    <Badge variant="outline" className="mt-2 text-xs border-amber-500/50 text-amber-500">
+                    <Badge variant="outline" className="mt-2 text-xs border-amber-500/50 bg-amber-500/10 text-amber-600">
+                      <AlertTriangle className="h-3 w-3 mr-1" />
                       {stockInfo.stock} left
                     </Badge>
                   )}
