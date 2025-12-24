@@ -15,7 +15,7 @@ interface ItemData {
   item_id: number;
   name: string;
   description?: string;
-  category?: number;
+  category?: string | number; // Can be category name or ID
   cost_price?: number;
   unit_price: number;
 }
@@ -83,8 +83,9 @@ serve(async (req) => {
       errors: [],
     };
 
-    // Map old category IDs to new UUIDs
-    const categoryMap = new Map<number, string>();
+    // Map category names/IDs to new UUIDs
+    const categoryMapById = new Map<number, string>();
+    const categoryMapByName = new Map<string, string>();
 
     // Step 1: Migrate categories
     for (const cat of payload.categories) {
@@ -96,7 +97,8 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existing) {
-        categoryMap.set(cat.category_id, existing.id);
+        categoryMapById.set(cat.category_id, existing.id);
+        categoryMapByName.set(cat.name.toLowerCase(), existing.id);
         continue;
       }
 
@@ -113,7 +115,8 @@ serve(async (req) => {
       if (error) {
         result.errors.push(`Category ${cat.name}: ${error.message}`);
       } else {
-        categoryMap.set(cat.category_id, newCat.id);
+        categoryMapById.set(cat.category_id, newCat.id);
+        categoryMapByName.set(cat.name.toLowerCase(), newCat.id);
         result.categories++;
       }
     }
@@ -133,8 +136,15 @@ serve(async (req) => {
         continue; // Skip existing items
       }
 
-      // Get category UUID from map
-      const categoryId = item.category ? categoryMap.get(item.category) : null;
+      // Get category UUID from map (support both name and ID)
+      let categoryId: string | null = null;
+      if (item.category) {
+        if (typeof item.category === 'string') {
+          categoryId = categoryMapByName.get(item.category.toLowerCase()) || null;
+        } else {
+          categoryId = categoryMapById.get(item.category) || null;
+        }
+      }
 
       const { error } = await supabase.from("menu_items").insert({
         name: item.name,
