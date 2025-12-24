@@ -30,13 +30,8 @@ export default function Migration() {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      const response = await supabase.functions.invoke("migrate-openpos", {
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-      });
+      // supabase.functions.invoke automatically includes the auth token
+      const response = await supabase.functions.invoke("migrate-openpos");
 
       if (response.error) {
         throw new Error(response.error.message);
