@@ -115,6 +115,26 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      let inventoryItemId = form.inventory_item_id || null;
+
+      // Auto-create inventory item for new menu items (inventory is source of truth)
+      if (!editingItem && !inventoryItemId) {
+        const { data: newInventoryItem, error: invError } = await supabase
+          .from("inventory_items")
+          .insert({
+            name: form.name,
+            current_stock: 0,
+            min_stock_level: 10,
+            unit: "pcs",
+            cost_per_unit: form.cost_price ? parseFloat(form.cost_price) : null,
+          })
+          .select("id")
+          .single();
+
+        if (invError) throw invError;
+        inventoryItemId = newInventoryItem.id;
+      }
+
       const payload = {
         name: form.name,
         description: form.description || null,
@@ -122,10 +142,10 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
         cost_price: form.cost_price ? parseFloat(form.cost_price) : null,
         category_id: form.category_id || null,
         image_url: form.image_url || null,
-        is_available: form.is_available,
+        is_available: inventoryItemId ? false : form.is_available, // Start unavailable if tracked
         is_active: form.is_active,
-        inventory_item_id: form.inventory_item_id || null,
-        track_inventory: form.track_inventory,
+        inventory_item_id: inventoryItemId,
+        track_inventory: true, // Always track inventory
       };
 
       if (editingItem) {
@@ -143,6 +163,8 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
       toast({ title: editingItem ? "Item updated" : "Item created" });
       queryClient.invalidateQueries({ queryKey: ["menu-items-all"] });
       queryClient.invalidateQueries({ queryKey: ["menu-items"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-items-active"] });
       onOpenChange(false);
     },
     onError: (error) => {
@@ -307,26 +329,16 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
             </Select>
           </div>
 
-          {/* Inventory Tracking */}
+          {/* Inventory Info */}
           <div className="space-y-3 p-4 rounded-lg border border-border bg-muted/30">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-muted-foreground" />
-              <Label className="font-medium">Inventory Tracking</Label>
+              <Label className="font-medium">Inventory</Label>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={form.track_inventory}
-                onCheckedChange={(checked) =>
-                  setForm((prev) => ({ ...prev, track_inventory: checked }))
-                }
-              />
-              <Label className="text-sm">Track stock for this item</Label>
-            </div>
-
-            {form.track_inventory && (
+            {editingItem?.inventory_item_id ? (
               <div className="space-y-2">
-                <Label>Link to Inventory Item</Label>
+                <Label>Linked Inventory Item</Label>
                 <Select
                   value={form.inventory_item_id}
                   onValueChange={(value) => setForm((prev) => ({ ...prev, inventory_item_id: value }))}
@@ -343,9 +355,13 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  When linked, this menu item will be automatically marked unavailable when stock runs out.
+                  Stock is controlled from Inventory. Item becomes unavailable at 0 stock.
                 </p>
               </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                An inventory record will be auto-created with 0 stock. Add stock in Inventory to make this item available for sale.
+              </p>
             )}
           </div>
 

@@ -54,8 +54,7 @@ const POS = () => {
       let query = supabase
         .from("menu_items")
         .select("*, menu_categories(name), inventory_items:inventory_item_id(id, current_stock, unit)")
-        .eq("is_active", true)
-        .eq("is_available", true);
+        .eq("is_active", true);
       
       if (selectedCategory) {
         query = query.eq("category_id", selectedCategory);
@@ -63,7 +62,15 @@ const POS = () => {
       
       const { data, error } = await query.order("name");
       if (error) throw error;
-      return data;
+      
+      // Filter: only show items with stock > 0 (inventory is source of truth)
+      return data.filter(item => {
+        if (item.track_inventory && item.inventory_items) {
+          return item.inventory_items.current_stock > 0;
+        }
+        // Non-tracked items are always available
+        return item.is_available;
+      });
     },
   });
 
