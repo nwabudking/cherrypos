@@ -23,7 +23,7 @@ const roleLabels: Record<string, string> = {
 };
 
 export const UserMenu = () => {
-  const { user, role, signOut } = useAuth();
+  const { user, profile, role, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -31,8 +31,8 @@ export const UserMenu = () => {
     navigate('/auth');
   };
 
-  const initials = user?.full_name
-    ? user.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+  const initials = profile?.full_name
+    ? profile.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.slice(0, 2).toUpperCase() || 'U';
 
   return (
@@ -40,14 +40,14 @@ export const UserMenu = () => {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="flex items-center gap-3 px-2 hover:bg-muted">
           <Avatar className="h-8 w-8 border border-border">
-            <AvatarImage src={user?.avatar_url || undefined} />
+            <AvatarImage src={profile?.avatar_url || undefined} />
             <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
               {initials}
             </AvatarFallback>
           </Avatar>
           <div className="hidden md:flex flex-col items-start">
             <span className="text-sm font-medium text-foreground">
-              {user?.full_name || user?.email || 'User'}
+              {profile?.full_name || user?.email || 'User'}
             </span>
             <span className="text-xs text-muted-foreground">
               {role ? roleLabels[role] : 'Staff'}

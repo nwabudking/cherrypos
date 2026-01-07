@@ -75,7 +75,7 @@ const KPICard = ({
 );
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [lowStockDialogOpen, setLowStockDialogOpen] = useState(false);
   const today = new Date();
   const todayStart = startOfDay(today);
@@ -175,7 +175,7 @@ const Dashboard = () => {
       {/* Welcome header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">
-          {getGreeting()}, {user?.full_name?.split(" ")[0] || "there"}!
+          {getGreeting()}, {profile?.full_name?.split(" ")[0] || "there"}!
         </h1>
         <p className="text-muted-foreground">
           Here's what's happening at Cherry Dining Lounge today.
