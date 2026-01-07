@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBarContext } from "@/contexts/BarContext";
 import { useToast } from "@/hooks/use-toast";
 import { useActiveMenuCategories, useActiveMenuItems } from "@/hooks/useMenu";
 import { useCreateOrder, CreateOrderData } from "@/hooks/useOrders";
@@ -9,6 +10,7 @@ import { CategoryTabs } from "@/components/pos/CategoryTabs";
 import { MenuGrid } from "@/components/pos/MenuGrid";
 import { CartPanel } from "@/components/pos/CartPanel";
 import { CheckoutDialog } from "@/components/pos/CheckoutDialog";
+import { BarSelector } from "@/components/pos/BarSelector";
 import type { MenuCategory } from "@/hooks/useMenu";
 
 export interface CartItem {
@@ -31,6 +33,7 @@ interface CompletedOrder {
 
 const POS = () => {
   const { user } = useAuth();
+  const { activeBar } = useBarContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -60,6 +63,7 @@ const POS = () => {
       service_charge: 0,
       discount_amount: 0,
       total_amount: subtotal,
+      bar_id: activeBar?.id || null,
       items: cart.map((item) => ({
         menu_item_id: item.menuItemId,
         item_name: item.name,
@@ -167,7 +171,9 @@ const POS = () => {
           setOrderType={setOrderType}
           tableNumber={tableNumber}
           setTableNumber={setTableNumber}
-        />
+        >
+          <BarSelector />
+        </POSHeader>
 
         <CategoryTabs
           categories={categories}

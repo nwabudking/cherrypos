@@ -9,6 +9,7 @@ interface POSHeaderProps {
   setOrderType: (type: OrderType) => void;
   tableNumber: string;
   setTableNumber: (value: string) => void;
+  children?: React.ReactNode;
 }
 
 const orderTypes: { type: OrderType; label: string; icon: React.ReactNode }[] = [
@@ -23,36 +24,41 @@ export const POSHeader = ({
   setOrderType,
   tableNumber,
   setTableNumber,
+  children,
 }: POSHeaderProps) => {
   return (
     <div className="p-4 border-b border-border bg-card">
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="flex gap-2">
-          {orderTypes.map(({ type, label, icon }) => (
-            <Button
-              key={type}
-              variant={orderType === type ? "default" : "outline"}
-              size="sm"
-              onClick={() => setOrderType(type)}
-              className="gap-2"
-            >
-              {icon}
-              {label}
-            </Button>
-          ))}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex gap-2">
+            {orderTypes.map(({ type, label, icon }) => (
+              <Button
+                key={type}
+                variant={orderType === type ? "default" : "outline"}
+                size="sm"
+                onClick={() => setOrderType(type)}
+                className="gap-2"
+              >
+                {icon}
+                {label}
+              </Button>
+            ))}
+          </div>
+
+          {orderType === "dine_in" && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Table:</span>
+              <Input
+                value={tableNumber}
+                onChange={(e) => setTableNumber(e.target.value)}
+                placeholder="e.g. A1"
+                className="w-20 h-9"
+              />
+            </div>
+          )}
         </div>
 
-        {orderType === "dine_in" && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Table:</span>
-            <Input
-              value={tableNumber}
-              onChange={(e) => setTableNumber(e.target.value)}
-              placeholder="e.g. A1"
-              className="w-20 h-9"
-            />
-          </div>
-        )}
+        {children}
       </div>
     </div>
   );

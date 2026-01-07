@@ -30,6 +30,8 @@ import {
   Cherry,
   DatabaseBackup,
   FileText,
+  Warehouse,
+  Store,
 } from 'lucide-react';
 
 interface NavItem {
@@ -52,6 +54,11 @@ const operationsNavItems: NavItem[] = [
   { title: 'Menu', url: '/menu', icon: UtensilsCrossed, roles: ['super_admin', 'manager'] },
   { title: 'Bar', url: '/bar', icon: Wine, roles: ['super_admin', 'manager', 'bar_staff'] },
   { title: 'Kitchen', url: '/kitchen', icon: ChefHat, roles: ['super_admin', 'manager', 'kitchen_staff'] },
+];
+
+const storeNavItems: NavItem[] = [
+  { title: 'Store Inventory', url: '/store', icon: Warehouse, roles: ['super_admin', 'manager', 'store_admin', 'store_user'] },
+  { title: 'Bars', url: '/bars', icon: Store, roles: ['super_admin', 'manager'] },
 ];
 
 const managementNavItems: NavItem[] = [
@@ -125,6 +132,15 @@ export const AppSidebar = () => {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>{renderNavItems(operationsNavItems)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Store
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>{renderNavItems(storeNavItems)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
