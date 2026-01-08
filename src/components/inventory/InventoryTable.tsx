@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Edit2, Trash2, ArrowUpDown } from "lucide-react";
-import type { InventoryItem } from "@/pages/Inventory";
+import type { InventoryItem } from "@/types/inventory";
 
 interface InventoryTableProps {
   items: InventoryItem[];

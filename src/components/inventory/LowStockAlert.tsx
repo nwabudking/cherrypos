@@ -1,7 +1,7 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
-import type { InventoryItem } from "@/pages/Inventory";
+import type { InventoryItem } from "@/types/inventory";
 
 interface LowStockAlertProps {
   items: InventoryItem[];

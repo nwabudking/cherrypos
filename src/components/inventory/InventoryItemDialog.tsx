@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { InventoryItem } from "@/pages/Inventory";
+import type { InventoryItem } from "@/types/inventory";
 import type { Supplier } from "./SupplierDialog";
 
 interface InventoryItemDialogProps {

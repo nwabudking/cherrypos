@@ -4,10 +4,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   useInventoryItems,
-  useLowStockItems,
   useCreateInventoryItem,
   useUpdateInventoryItem,
   useDeleteInventoryItem,
+  useSuppliers,
   useAddStock,
   useRemoveStock,
   useAdjustStock,
@@ -40,6 +40,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -52,29 +58,83 @@ import {
   Send,
   History,
   Warehouse,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  PackagePlus,
+  UtensilsCrossed,
+  FolderPlus,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { InventoryItemDialog } from "@/components/inventory/InventoryItemDialog";
+import { StockMovementDialog } from "@/components/inventory/StockMovementDialog";
+import { AddCategoryDialog } from "@/components/inventory/AddCategoryDialog";
+import { MenuItemsTab } from "@/components/menu/MenuItemsTab";
+import { CategoriesTab } from "@/components/menu/CategoriesTab";
+
+type InventoryItem = {
+  id: string;
+  name: string;
+  category: string | null;
+  unit: string;
+  current_stock: number;
+  min_stock_level: number;
+  cost_per_unit: number | null;
+  supplier: string | null;
+  supplier_id: string | null;
+  is_active: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type MovementType = "in" | "out" | "adjustment";
 
 const Store = () => {
   const { toast } = useToast();
   const { role } = useAuth();
   const queryClient = useQueryClient();
 
+  // Filters and search
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [showLowStock, setShowLowStock] = useState(false);
+  
+  // Transfer dialog state
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedTransferItem, setSelectedTransferItem] = useState<InventoryItem | null>(null);
   const [selectedBarId, setSelectedBarId] = useState("");
   const [transferQuantity, setTransferQuantity] = useState("");
   const [transferNotes, setTransferNotes] = useState("");
+  
+  // Item dialog state
+  const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  
+  // Stock movement dialog state
+  const [isMovementDialogOpen, setIsMovementDialogOpen] = useState(false);
+  const [movementItem, setMovementItem] = useState<InventoryItem | null>(null);
+  
+  // Category dialog state
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
 
+  // Data hooks
   const { data: items = [], isLoading } = useInventoryItems();
   const { data: bars = [] } = useBars();
   const { data: transfers = [] } = useInventoryTransfers();
+  const { data: suppliers = [] } = useSuppliers();
   const transferMutation = useTransferToBar();
+  
+  // CRUD mutations
+  const createItemMutation = useCreateInventoryItem();
+  const updateItemMutation = useUpdateInventoryItem();
+  const deleteItemMutation = useDeleteInventoryItem();
+  const addStockMutation = useAddStock();
+  const removeStockMutation = useRemoveStock();
+  const adjustStockMutation = useAdjustStock();
 
-  const categories = [...new Set(items.map((i) => i.category).filter(Boolean))] as string[];
+  const itemCategories = [...new Set(items.map((i) => i.category).filter(Boolean))] as string[];
+  const categories = [...new Set([...itemCategories, ...customCategories])];
   const lowStockItems = items.filter((i) => i.current_stock <= i.min_stock_level);
 
   const filteredItems = items.filter((item) => {
@@ -85,11 +145,12 @@ const Store = () => {
     return matchesSearch && matchesCategory && matchesLowStock;
   });
 
-  const canManage = role === "super_admin" || role === "manager" || role === "inventory_officer";
-  const canTransfer = role === "super_admin" || role === "manager";
+  const canManage = role === "super_admin" || role === "manager" || role === "inventory_officer" || role === "store_admin";
+  const canTransfer = role === "super_admin" || role === "manager" || role === "store_admin";
 
-  const handleTransferClick = (item: any) => {
-    setSelectedItem(item);
+  // Transfer handlers
+  const handleTransferClick = (item: InventoryItem) => {
+    setSelectedTransferItem(item);
     setSelectedBarId("");
     setTransferQuantity("");
     setTransferNotes("");
@@ -97,16 +158,16 @@ const Store = () => {
   };
 
   const handleTransfer = () => {
-    if (!selectedItem || !selectedBarId || !transferQuantity) {
+    if (!selectedTransferItem || !selectedBarId || !transferQuantity) {
       toast({ title: "Please fill all required fields", variant: "destructive" });
       return;
     }
 
     const qty = parseFloat(transferQuantity);
-    if (qty <= 0 || qty > selectedItem.current_stock) {
+    if (qty <= 0 || qty > selectedTransferItem.current_stock) {
       toast({ 
         title: "Invalid quantity", 
-        description: `Available: ${selectedItem.current_stock} ${selectedItem.unit}`,
+        description: `Available: ${selectedTransferItem.current_stock} ${selectedTransferItem.unit}`,
         variant: "destructive" 
       });
       return;
@@ -115,17 +176,108 @@ const Store = () => {
     transferMutation.mutate(
       {
         barId: selectedBarId,
-        inventoryItemId: selectedItem.id,
+        inventoryItemId: selectedTransferItem.id,
         quantity: qty,
         notes: transferNotes || undefined,
       },
       {
         onSuccess: () => {
           setTransferDialogOpen(false);
-          setSelectedItem(null);
+          setSelectedTransferItem(null);
         },
       }
     );
+  };
+
+  // Item CRUD handlers
+  const handleAddItem = () => {
+    setSelectedItem(null);
+    setIsItemDialogOpen(true);
+  };
+
+  const handleEditItem = (item: InventoryItem) => {
+    setSelectedItem(item);
+    setIsItemDialogOpen(true);
+  };
+
+  const handleDeleteItem = (id: string) => {
+    deleteItemMutation.mutate(id);
+  };
+
+  const handleSaveItem = (data: Partial<InventoryItem> & { id?: string }) => {
+    if (data.id) {
+      updateItemMutation.mutate(
+        { id: data.id, data },
+        {
+          onSuccess: () => {
+            setIsItemDialogOpen(false);
+            setSelectedItem(null);
+          },
+        }
+      );
+    } else if (data.name) {
+      createItemMutation.mutate(
+        { ...data, name: data.name } as { name: string } & Partial<InventoryItem>,
+        {
+          onSuccess: () => {
+            setIsItemDialogOpen(false);
+            setSelectedItem(null);
+          },
+        }
+      );
+    }
+  };
+
+  // Stock movement handlers
+  const handleStockMovement = (item: InventoryItem) => {
+    setMovementItem(item);
+    setIsMovementDialogOpen(true);
+  };
+
+  const handleStockMovementSubmit = (
+    type: MovementType,
+    quantity: number,
+    notes?: string
+  ) => {
+    if (!movementItem) return;
+
+    if (type === "in") {
+      addStockMutation.mutate(
+        { itemId: movementItem.id, quantity, notes },
+        {
+          onSuccess: () => {
+            setIsMovementDialogOpen(false);
+            setMovementItem(null);
+          },
+        }
+      );
+    } else if (type === "out") {
+      removeStockMutation.mutate(
+        { itemId: movementItem.id, quantity, notes },
+        {
+          onSuccess: () => {
+            setIsMovementDialogOpen(false);
+            setMovementItem(null);
+          },
+        }
+      );
+    } else {
+      adjustStockMutation.mutate(
+        { itemId: movementItem.id, newStock: quantity, notes },
+        {
+          onSuccess: () => {
+            setIsMovementDialogOpen(false);
+            setMovementItem(null);
+          },
+        }
+      );
+    }
+  };
+
+  // Category handler
+  const handleAddCategory = (category: string) => {
+    setCustomCategories((prev) => [...prev, category]);
+    toast({ title: "Category Added", description: `"${category}" is now available for items.` });
   };
 
   const formatPrice = (price: number | null) => {
@@ -143,10 +295,10 @@ const Store = () => {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Warehouse className="h-6 w-6 text-primary" />
-            Store Inventory
+            Store Management
           </h1>
           <p className="text-muted-foreground">
-            Central inventory management - Transfer stock to bars
+            Central inventory, menu, and bar transfers
           </p>
         </div>
       </div>
@@ -210,13 +362,15 @@ const Store = () => {
       <Tabs defaultValue="inventory" className="space-y-4">
         <TabsList>
           <TabsTrigger value="inventory">Store Inventory</TabsTrigger>
+          <TabsTrigger value="menu">Menu Items</TabsTrigger>
+          <TabsTrigger value="categories">Menu Categories</TabsTrigger>
           <TabsTrigger value="transfers">Transfer History</TabsTrigger>
         </TabsList>
 
         <TabsContent value="inventory" className="space-y-4">
           {/* Filters */}
-          <div className="flex flex-wrap gap-4">
-            <div className="relative flex-1 min-w-[200px]">
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search items..."
@@ -245,6 +399,19 @@ const Store = () => {
               <AlertTriangle className="h-4 w-4 mr-2" />
               Low Stock Only
             </Button>
+            
+            {canManage && (
+              <div className="flex gap-2 ml-auto">
+                <Button variant="outline" onClick={() => setIsCategoryDialogOpen(true)}>
+                  <FolderPlus className="h-4 w-4 mr-2" />
+                  Add Category
+                </Button>
+                <Button onClick={handleAddItem}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Item
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Inventory Table */}
@@ -259,7 +426,7 @@ const Store = () => {
                     <TableHead className="text-right">Min Level</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
                     <TableHead>Status</TableHead>
-                    {canTransfer && <TableHead className="text-right">Actions</TableHead>}
+                    {canManage && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -294,16 +461,41 @@ const Store = () => {
                             </Badge>
                           )}
                         </TableCell>
-                        {canTransfer && (
+                        {canManage && (
                           <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              onClick={() => handleTransferClick(item)}
-                              disabled={item.current_stock <= 0}
-                            >
-                              <Send className="h-4 w-4 mr-1" />
-                              Transfer
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleStockMovement(item)}>
+                                  <PackagePlus className="h-4 w-4 mr-2" />
+                                  Stock Movement
+                                </DropdownMenuItem>
+                                {canTransfer && (
+                                  <DropdownMenuItem 
+                                    onClick={() => handleTransferClick(item)}
+                                    disabled={item.current_stock <= 0}
+                                  >
+                                    <Send className="h-4 w-4 mr-2" />
+                                    Transfer to Bar
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => handleEditItem(item)}>
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeleteItem(item.id)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         )}
                       </TableRow>
@@ -319,6 +511,31 @@ const Store = () => {
                 </TableBody>
               </Table>
             </ScrollArea>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="menu" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UtensilsCrossed className="h-5 w-5" />
+                Menu Items
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MenuItemsTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="categories" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Menu Categories</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CategoriesTab />
+            </CardContent>
           </Card>
         </TabsContent>
 
@@ -387,11 +604,11 @@ const Store = () => {
             <DialogTitle>Transfer to Bar</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {selectedItem && (
+            {selectedTransferItem && (
               <div className="p-3 bg-muted rounded-lg">
-                <p className="font-medium">{selectedItem.name}</p>
+                <p className="font-medium">{selectedTransferItem.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  Available: {selectedItem.current_stock} {selectedItem.unit}
+                  Available: {selectedTransferItem.current_stock} {selectedTransferItem.unit}
                 </p>
               </div>
             )}
@@ -414,11 +631,11 @@ const Store = () => {
               <Label>Quantity *</Label>
               <Input
                 type="number"
-                placeholder={`Max: ${selectedItem?.current_stock || 0}`}
+                placeholder={`Max: ${selectedTransferItem?.current_stock || 0}`}
                 value={transferQuantity}
                 onChange={(e) => setTransferQuantity(e.target.value)}
                 min={0}
-                max={selectedItem?.current_stock || 0}
+                max={selectedTransferItem?.current_stock || 0}
               />
             </div>
             <div className="space-y-2">
@@ -443,6 +660,38 @@ const Store = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Inventory Item Dialog */}
+      <InventoryItemDialog
+        item={selectedItem}
+        open={isItemDialogOpen}
+        onOpenChange={setIsItemDialogOpen}
+        onSave={handleSaveItem}
+        isSaving={createItemMutation.isPending || updateItemMutation.isPending}
+        categories={categories}
+        suppliers={suppliers}
+      />
+
+      {/* Stock Movement Dialog */}
+      <StockMovementDialog
+        item={movementItem}
+        open={isMovementDialogOpen}
+        onOpenChange={setIsMovementDialogOpen}
+        onSubmit={handleStockMovementSubmit}
+        isSubmitting={
+          addStockMutation.isPending ||
+          removeStockMutation.isPending ||
+          adjustStockMutation.isPending
+        }
+      />
+
+      {/* Add Category Dialog */}
+      <AddCategoryDialog
+        open={isCategoryDialogOpen}
+        onOpenChange={setIsCategoryDialogOpen}
+        existingCategories={categories}
+        onAddCategory={handleAddCategory}
+      />
     </div>
   );
 };

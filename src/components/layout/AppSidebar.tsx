@@ -19,10 +19,9 @@ import {
   ClipboardList,
   History,
   Grid3X3,
-  UtensilsCrossed,
   Wine,
   ChefHat,
-  Package,
+  Truck,
   Users,
   Heart,
   BarChart3,
@@ -51,18 +50,17 @@ const mainNavItems: NavItem[] = [
 ];
 
 const operationsNavItems: NavItem[] = [
-  { title: 'Menu', url: '/menu', icon: UtensilsCrossed, roles: ['super_admin', 'manager'] },
   { title: 'Bar', url: '/bar', icon: Wine, roles: ['super_admin', 'manager', 'bar_staff'] },
   { title: 'Kitchen', url: '/kitchen', icon: ChefHat, roles: ['super_admin', 'manager', 'kitchen_staff'] },
 ];
 
 const storeNavItems: NavItem[] = [
-  { title: 'Store Inventory', url: '/store', icon: Warehouse, roles: ['super_admin', 'manager', 'store_admin', 'store_user'] },
+  { title: 'Store Management', url: '/store', icon: Warehouse, roles: ['super_admin', 'manager', 'store_admin', 'store_user', 'inventory_officer'] },
   { title: 'Bars', url: '/bars', icon: Store, roles: ['super_admin', 'manager'] },
 ];
 
 const managementNavItems: NavItem[] = [
-  { title: 'Inventory', url: '/inventory', icon: Package, roles: ['super_admin', 'manager', 'inventory_officer'] },
+  { title: 'Suppliers', url: '/inventory', icon: Truck, roles: ['super_admin', 'manager', 'inventory_officer'] },
   { title: 'Staff', url: '/staff', icon: Users, roles: ['super_admin', 'manager'] },
   { title: 'Customers', url: '/customers', icon: Heart, roles: ['super_admin', 'manager', 'cashier'] },
   { title: 'Reports', url: '/reports', icon: BarChart3, roles: ['super_admin', 'manager', 'accountant'] },
