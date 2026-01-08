@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { useOrders, useUpdateOrderStatus, Order, OrderItem } from "@/hooks/useOrders";
+import { supabase } from "@/integrations/supabase/client";
 import { OrdersHeader } from "@/components/orders/OrdersHeader";
 import { OrdersFilters } from "@/components/orders/OrdersFilters";
 import { OrdersTable } from "@/components/orders/OrdersTable";
@@ -21,6 +23,7 @@ export type OrderStatus = "pending" | "preparing" | "ready" | "completed" | "can
 
 const Orders = () => {
   const { toast } = useToast();
+  const { role } = useAuth();
   const queryClient = useQueryClient();
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -42,7 +45,23 @@ const Orders = () => {
 
   const updateStatusMutation = useUpdateOrderStatus();
 
-  const handleUpdateStatus = (orderId: string, status: OrderStatus) => {
+  const handleUpdateStatus = async (orderId: string, status: OrderStatus, reason?: string) => {
+    // Create audit log for corrections/cancellations
+    if (reason && selectedOrder) {
+      try {
+        await supabase.from('audit_logs').insert({
+          action_type: status === 'cancelled' ? 'void' : 'correction',
+          entity_type: 'order',
+          entity_id: orderId,
+          original_data: { status: selectedOrder.status, order_number: selectedOrder.order_number },
+          new_data: { status, reason },
+          reason,
+        });
+      } catch (e) {
+        console.error('Failed to create audit log:', e);
+      }
+    }
+
     updateStatusMutation.mutate(
       { id: orderId, status },
       {
@@ -90,10 +109,11 @@ const Orders = () => {
         order={selectedOrder}
         open={!!selectedOrder}
         onOpenChange={(open) => !open && setSelectedOrder(null)}
-        onUpdateStatus={(status) =>
-          selectedOrder && handleUpdateStatus(selectedOrder.id, status)
+        onUpdateStatus={(status, reason) =>
+          selectedOrder && handleUpdateStatus(selectedOrder.id, status, reason)
         }
         isUpdating={updateStatusMutation.isPending}
+        userRole={role}
       />
     </div>
   );

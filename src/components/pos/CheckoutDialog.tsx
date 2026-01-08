@@ -24,6 +24,8 @@ interface CheckoutDialogProps {
   completedOrder: { order_number: string } | null;
   onClose: () => void;
   cashierName?: string;
+  canReprint?: boolean;
+  insufficientStock?: Array<{ name: string; available: number; requested: number }>;
 }
 
 const paymentMethods = [
@@ -54,8 +56,11 @@ export const CheckoutDialog = ({
   completedOrder,
   onClose,
   cashierName,
+  canReprint = false,
+  insufficientStock = [],
 }: CheckoutDialogProps) => {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [hasPrinted, setHasPrinted] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const handleConfirm = () => {
@@ -64,18 +69,20 @@ export const CheckoutDialog = ({
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = (copyType: "customer" | "office") => {
     const printContent = receiptRef.current;
     if (!printContent) return;
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    const copyLabel = copyType === "customer" ? "CUSTOMER COPY" : "OFFICE COPY";
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Receipt - ${completedOrder?.order_number}</title>
+          <title>Receipt - ${completedOrder?.order_number} (${copyLabel})</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
@@ -102,12 +109,20 @@ export const CheckoutDialog = ({
             .border-solid { border-top: 1px solid #333; }
             .gray { color: #666; }
             .pl-4 { padding-left: 16px; }
+            .copy-label { 
+              text-align: center; 
+              font-weight: bold; 
+              border: 1px dashed #333;
+              padding: 4px;
+              margin-bottom: 10px;
+            }
             @media print {
               body { width: 80mm; }
             }
           </style>
         </head>
         <body>
+          <div class="copy-label">${copyLabel}</div>
           ${printContent.innerHTML}
         </body>
       </html>
@@ -118,8 +133,15 @@ export const CheckoutDialog = ({
     printWindow.close();
   };
 
+  const handlePrintBoth = () => {
+    handlePrint("customer");
+    setTimeout(() => handlePrint("office"), 500);
+    setHasPrinted(true);
+  };
+
   const handleClose = () => {
     setSelectedMethod(null);
+    setHasPrinted(false);
     onClose();
   };
 
@@ -153,23 +175,28 @@ export const CheckoutDialog = ({
 
             {/* Actions */}
             <div className="flex flex-col gap-3">
-              <div className="flex gap-3">
+              {!hasPrinted ? (
                 <Button
-                  className="flex-1"
-                  onClick={handlePrint}
+                  className="w-full"
+                  onClick={handlePrintBoth}
                 >
                   <Printer className="h-4 w-4 mr-2" />
-                  Print Receipt
+                  Print Receipt (Customer + Office Copy)
                 </Button>
-                <Button
-                  variant="secondary"
-                  className="flex-1"
-                  onClick={handlePrint}
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Reprint
-                </Button>
-              </div>
+              ) : (
+                <div className="flex gap-3">
+                  {canReprint && (
+                    <Button
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={handlePrintBoth}
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Reprint
+                    </Button>
+                  )}
+                </div>
+              )}
               <Button
                 variant="outline"
                 className="w-full"

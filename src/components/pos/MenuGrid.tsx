@@ -3,6 +3,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Plus, AlertCircle, AlertTriangle } from "lucide-react";
 
+import type { MenuItemStockInfo } from "@/hooks/useBarStock";
+
 interface MenuItem {
   id: string;
   name: string;
@@ -17,6 +19,7 @@ interface MenuItem {
 interface MenuGridProps {
   items: MenuItem[];
   onAddToCart: (item: { id: string; name: string; price: number }) => void;
+  stockInfoMap?: Map<string, MenuItemStockInfo>;
 }
 
 const formatPrice = (price: number) => {
@@ -27,11 +30,22 @@ const formatPrice = (price: number) => {
   }).format(price);
 };
 
-export const MenuGrid = ({ items, onAddToCart }: MenuGridProps) => {
-  // Stock tracking is handled by the backend now
+export const MenuGrid = ({ items, onAddToCart, stockInfoMap }: MenuGridProps) => {
   const getStockInfo = (item: MenuItem) => {
-    // For now, assume all items are in stock since the backend handles this
-    return { hasStock: true, stock: null, isLow: false };
+    const stockInfo = stockInfoMap?.get(item.id);
+    if (!stockInfo) {
+      // If no stock tracking, assume available
+      if (!item.track_inventory || !item.inventory_item_id) {
+        return { hasStock: true, stock: null, isLow: false };
+      }
+      // If tracking but no bar selected, mark as unavailable
+      return { hasStock: false, stock: 0, isLow: false };
+    }
+    return { 
+      hasStock: stockInfo.hasStock, 
+      stock: stockInfo.currentStock === Infinity ? null : stockInfo.currentStock, 
+      isLow: stockInfo.isLowStock 
+    };
   };
 
   return (
