@@ -47,6 +47,7 @@ export const InventoryItemDialog = ({
     selling_price: 0,
     supplier: "",
     supplier_id: "",
+    expiry_date: "",
   });
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export const InventoryItemDialog = ({
         selling_price: item.selling_price || 0,
         supplier: item.supplier || "",
         supplier_id: item.supplier_id || "",
+        expiry_date: (item as any).expiry_date || "",
       });
     } else {
       setFormData({
@@ -73,6 +75,7 @@ export const InventoryItemDialog = ({
         selling_price: 0,
         supplier: "",
         supplier_id: "",
+        expiry_date: "",
       });
     }
   }, [item]);
@@ -91,6 +94,7 @@ export const InventoryItemDialog = ({
       selling_price: formData.selling_price || null,
       supplier: selectedSupplier?.name || formData.supplier || null,
       supplier_id: formData.supplier_id || null,
+      expiry_date: formData.expiry_date || null,
     });
   };
 
@@ -182,33 +186,45 @@ export const InventoryItemDialog = ({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Supplier</Label>
-            {suppliers.length > 0 ? (
-              <Select
-                value={formData.supplier_id}
-                onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select supplier" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">None</SelectItem>
-                  {suppliers.map((supplier) => (
-                    <SelectItem key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Supplier</Label>
+              {suppliers.length > 0 ? (
+                <Select
+                  value={formData.supplier_id}
+                  onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select supplier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="supplier"
+                  value={formData.supplier}
+                  onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+                  placeholder="Enter supplier name"
+                />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="expiry_date">Expiry Date</Label>
               <Input
-                id="supplier"
-                value={formData.supplier}
-                onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                placeholder="Enter supplier name"
+                id="expiry_date"
+                type="date"
+                value={formData.expiry_date}
+                onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
               />
-            )}
+            </div>
           </div>
 
           <div className="flex gap-2 justify-end pt-4">

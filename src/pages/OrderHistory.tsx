@@ -38,7 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useBars } from "@/hooks/useBars";
-import { exportTableToPDF, exportToExcel } from "@/lib/exportUtils";
+import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat("en-NG", {
@@ -170,21 +170,20 @@ const OrderHistory = () => {
   };
 
   const handleExportPDF = () => {
-    const headers = ["Order #", "Date", "Type", "Items", "Total", "Status", "Payment"];
-    const rows = filteredOrders.map((order) => [
-      order.order_number,
-      format(new Date(order.created_at), "MMM dd, yyyy HH:mm"),
-      orderTypeLabels[order.order_type] || order.order_type,
-      order.order_items?.length || 0,
-      formatPrice(order.total_amount),
-      order.status,
-      paymentLabels[order.payments?.[0]?.payment_method] || "-",
-    ]);
+    const data = filteredOrders.map((order) => ({
+      "Order #": order.order_number,
+      Date: format(new Date(order.created_at), "MMM dd, yyyy HH:mm"),
+      Type: orderTypeLabels[order.order_type] || order.order_type,
+      Items: order.order_items?.length || 0,
+      Total: formatPrice(order.total_amount),
+      Status: order.status,
+      Payment: paymentLabels[order.payments?.[0]?.payment_method] || "-",
+    }));
     
     const dateRange = startDate && endDate 
       ? `${format(startDate, "MMM dd")} - ${format(endDate, "MMM dd, yyyy")}`
       : "All Orders";
-    exportTableToPDF(`Order History - ${dateRange}`, headers, rows);
+    exportToPDF(data, `Order History - ${dateRange}`, "order_history");
   };
 
   const handleExportExcel = () => {

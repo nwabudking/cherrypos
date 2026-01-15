@@ -87,22 +87,8 @@ import { CategoriesTab } from "@/components/menu/CategoriesTab";
 import { StockHistoryTab } from "@/components/store/StockHistoryTab";
 import { BarInventoryLevelsTab } from "@/components/store/BarInventoryLevelsTab";
 import { BulkImportDialog } from "@/components/store/BulkImportDialog";
-
-type InventoryItem = {
-  id: string;
-  name: string;
-  category: string | null;
-  unit: string;
-  current_stock: number;
-  min_stock_level: number;
-  cost_per_unit: number | null;
-  selling_price: number | null;
-  supplier: string | null;
-  supplier_id: string | null;
-  is_active: boolean | null;
-  created_at: string | null;
-  updated_at: string | null;
-};
+import { ExpiryAlert } from "@/components/store/ExpiryAlert";
+import type { InventoryItem } from "@/types/inventory";
 
 type MovementType = "in" | "out" | "adjustment";
 
@@ -399,6 +385,18 @@ const StorePage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Expiry Alert */}
+      <ExpiryAlert 
+        items={items.map(i => ({
+          id: i.id,
+          name: i.name,
+          expiry_date: i.expiry_date || '',
+          current_stock: i.current_stock,
+          unit: i.unit,
+        }))}
+        warningDays={30}
+      />
 
       <Tabs defaultValue="inventory" className="space-y-4">
         <TabsList className="flex-wrap">

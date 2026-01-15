@@ -13,6 +13,7 @@ import BarInventory from "./pages/BarInventory";
 import { POS, Orders, OrderHistory, Tables, Menu, Bar, Kitchen, Inventory, Staff, Customers, Reports, SettingsPage, StorePage, BarsManagementPage } from "./pages/modules";
 import { BarProvider } from "@/contexts/BarContext";
 import NotFound from "./pages/NotFound";
+import Transfers from "./pages/Transfers";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
                 <Route path="/store" element={<StorePage />} />
                 <Route path="/bars" element={<BarsManagementPage />} />
                 <Route path="/bar-inventory" element={<BarInventory />} />
+                <Route path="/transfers" element={<Transfers />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />

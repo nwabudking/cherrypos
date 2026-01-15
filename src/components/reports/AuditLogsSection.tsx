@@ -38,7 +38,7 @@ import {
   Trash2,
   RefreshCw
 } from "lucide-react";
-import { exportTableToPDF, exportToExcel } from "@/lib/exportUtils";
+import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 import { cn } from "@/lib/utils";
 
 interface AuditLog {
@@ -135,20 +135,19 @@ export const AuditLogsSection = () => {
   });
 
   const handleExportPDF = () => {
-    const headers = ["Date & Time", "Action", "Entity", "Performed By", "Details", "Reason"];
-    const rows = auditLogs.map((log) => [
-      log.created_at ? format(new Date(log.created_at), "MMM dd, yyyy HH:mm") : "-",
-      log.action_type,
-      `${entityTypeLabels[log.entity_type] || log.entity_type}${log.entity_id ? ` (${log.entity_id.slice(0, 8)}...)` : ""}`,
-      log.performer?.full_name || log.performer?.email || "System",
-      log.new_data ? JSON.stringify(log.new_data).slice(0, 50) : "-",
-      log.reason || "-",
-    ]);
+    const data = auditLogs.map((log) => ({
+      "Date & Time": log.created_at ? format(new Date(log.created_at), "MMM dd, yyyy HH:mm") : "-",
+      Action: log.action_type,
+      Entity: `${entityTypeLabels[log.entity_type] || log.entity_type}${log.entity_id ? ` (${log.entity_id.slice(0, 8)}...)` : ""}`,
+      "Performed By": log.performer?.full_name || log.performer?.email || "System",
+      Details: log.new_data ? JSON.stringify(log.new_data).slice(0, 50) : "-",
+      Reason: log.reason || "-",
+    }));
     
     const dateRange = startDate && endDate 
       ? `${format(startDate, "MMM dd")} - ${format(endDate, "MMM dd, yyyy")}`
       : "All Time";
-    exportTableToPDF(`Audit Logs - ${dateRange}`, headers, rows);
+    exportToPDF(data, `Audit Logs - ${dateRange}`, "audit_logs");
   };
 
   const handleExportExcel = () => {

@@ -11,7 +11,7 @@ import { OrderDetailsDialog } from "@/components/orders/OrderDetailsDialog";
 import { Button } from "@/components/ui/button";
 import { FileDown, FileSpreadsheet } from "lucide-react";
 import { format } from "date-fns";
-import { exportTableToPDF, exportToExcel } from "@/lib/exportUtils";
+import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 
 export type OrderWithItems = Order & {
   order_items?: OrderItem[];
@@ -89,13 +89,15 @@ const Orders = () => {
   }).format(price);
 
   const handleExportPDF = () => {
-    const headers = ["Order #", "Type", "Items", "Total", "Status", "Time"];
-    const rows = orders.map((o) => [
-      o.order_number, o.order_type, o.order_items?.length || 0,
-      formatPrice(Number(o.total_amount)), o.status,
-      o.created_at ? format(new Date(o.created_at), "MMM dd HH:mm") : "-"
-    ]);
-    exportTableToPDF("Orders", headers, rows);
+    const data = orders.map((o) => ({
+      "Order #": o.order_number,
+      Type: o.order_type,
+      Items: o.order_items?.length || 0,
+      Total: formatPrice(Number(o.total_amount)),
+      Status: o.status,
+      Time: o.created_at ? format(new Date(o.created_at), "MMM dd HH:mm") : "-"
+    }));
+    exportToPDF(data, "Orders", "orders");
   };
 
   const handleExportExcel = () => {

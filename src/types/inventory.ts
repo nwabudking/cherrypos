@@ -12,6 +12,7 @@ export interface InventoryItem {
   is_active: boolean | null;
   created_at: string | null;
   updated_at: string | null;
+  expiry_date: string | null;
 }
 
 export type MovementType = "in" | "out" | "adjustment";

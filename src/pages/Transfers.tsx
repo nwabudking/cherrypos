@@ -133,26 +133,35 @@ const TransfersPage = () => {
   };
 
   const handleExportPDF = () => {
-    exportToPDF(filteredTransfers.map(t => ({
+    const data = filteredTransfers.map(t => ({
       Date: t.created_at ? format(new Date(t.created_at), 'MMM d, yyyy HH:mm') : '-',
       From: t.source_bar?.name || '-',
       To: t.destination_bar?.name || '-',
       Item: t.inventory_item?.name || '-',
       Quantity: `${t.quantity} ${t.inventory_item?.unit || ''}`,
       Status: t.status,
-    })), 'Bar-to-Bar Transfers', 'bar-transfers');
+    }));
+    exportToPDF(data, 'Bar-to-Bar Transfers', 'bar-transfers');
   };
 
   const handleExportExcel = () => {
-    exportToExcel(filteredTransfers.map(t => ({
-      Date: t.created_at ? format(new Date(t.created_at), 'MMM d, yyyy HH:mm') : '-',
-      From: t.source_bar?.name || '-',
-      To: t.destination_bar?.name || '-',
-      Item: t.inventory_item?.name || '-',
-      Quantity: t.quantity,
-      Status: t.status,
-      Notes: t.notes || '-',
-    })), 'bar-transfers');
+    exportToExcel('bar-transfers', filteredTransfers.map(t => ({
+      date: t.created_at ? format(new Date(t.created_at), 'MMM d, yyyy HH:mm') : '-',
+      from: t.source_bar?.name || '-',
+      to: t.destination_bar?.name || '-',
+      item: t.inventory_item?.name || '-',
+      quantity: t.quantity,
+      status: t.status,
+      notes: t.notes || '-',
+    })), [
+      { key: 'date', header: 'Date' },
+      { key: 'from', header: 'From' },
+      { key: 'to', header: 'To' },
+      { key: 'item', header: 'Item' },
+      { key: 'quantity', header: 'Quantity' },
+      { key: 'status', header: 'Status' },
+      { key: 'notes', header: 'Notes' },
+    ]);
   };
 
   if (isCashier && !assignedBarId && !assignmentQuery.isLoading) {

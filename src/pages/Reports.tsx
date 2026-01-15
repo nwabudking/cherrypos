@@ -13,7 +13,7 @@ import { AuditLogsSection } from "@/components/reports/AuditLogsSection";
 import { Button } from "@/components/ui/button";
 import { FileDown, FileSpreadsheet } from "lucide-react";
 import { startOfDay, endOfDay, subDays, format } from "date-fns";
-import { exportToPDF, exportToExcel, generateReportHTML } from "@/lib/exportUtils";
+import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 
 export type DateRange = "today" | "7days" | "30days" | "custom";
 
@@ -166,36 +166,15 @@ const Reports = () => {
 
   // Export handlers
   const handleExportPDF = () => {
-    const reportData = {
-      summary: [
-        { label: "Total Revenue", value: formatCurrency(totalRevenue) },
-        { label: "Total Orders", value: totalOrders },
-        { label: "Average Order", value: formatCurrency(averageOrderValue) },
-        { label: "Items Sold", value: totalItems },
-        ...(isSuperAdmin ? [
-          { label: "Total Cost", value: formatCurrency(totalCostPrice) },
-          { label: "Profit", value: formatCurrency(profit) },
-          { label: "Margin", value: `${profitMargin.toFixed(1)}%` },
-        ] : []),
-      ],
-      tableData: orders.map(o => ({
-        order_number: o.order_number,
-        date: format(new Date(o.created_at!), "MMM dd, yyyy HH:mm"),
-        type: o.order_type,
-        total: formatCurrency(Number(o.total_amount)),
-        status: o.status,
-      })),
-      columns: [
-        { key: "order_number", header: "Order #" },
-        { key: "date", header: "Date" },
-        { key: "type", header: "Type" },
-        { key: "total", header: "Total" },
-        { key: "status", header: "Status" },
-      ],
-    };
-
-    const content = generateReportHTML(reportData);
-    exportToPDF(`Sales Report - ${format(start, "MMM dd")} to ${format(end, "MMM dd, yyyy")}`, content);
+    const data = orders.map(o => ({
+      "Order #": o.order_number,
+      Date: format(new Date(o.created_at!), "MMM dd, yyyy HH:mm"),
+      Type: o.order_type,
+      Total: formatCurrency(Number(o.total_amount)),
+      Status: o.status,
+    }));
+    
+    exportToPDF(data, `Sales Report - ${format(start, "MMM dd")} to ${format(end, "MMM dd, yyyy")}`, "sales_report");
   };
 
   const handleExportExcel = () => {

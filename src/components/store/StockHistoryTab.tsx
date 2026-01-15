@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { format } from "date-fns";
 import { ArrowUpCircle, ArrowDownCircle, RefreshCw, FileDown, FileSpreadsheet } from "lucide-react";
-import { exportTableToPDF, exportToExcel } from "@/lib/exportUtils";
+import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 
 export const StockHistoryTab = () => {
   const { data: movements = [], isLoading } = useStockMovements();
@@ -41,17 +41,16 @@ export const StockHistoryTab = () => {
   };
 
   const handleExportPDF = () => {
-    const headers = ["Date & Time", "Item", "Type", "Previous", "Quantity", "New Stock", "Notes"];
-    const rows = movements.map((m) => [
-      m.created_at ? format(new Date(m.created_at), "MMM dd, yyyy HH:mm") : "-",
-      (m as any).inventory_items?.name || "Unknown",
-      m.movement_type === "in" ? "Stock In" : m.movement_type === "out" ? "Stock Out" : "Adjustment",
-      m.previous_stock,
-      `${m.movement_type === "in" ? "+" : m.movement_type === "out" ? "-" : ""}${m.quantity}`,
-      m.new_stock,
-      m.notes || "-",
-    ]);
-    exportTableToPDF("Stock Movement History", headers, rows);
+    const data = movements.map((m) => ({
+      "Date & Time": m.created_at ? format(new Date(m.created_at), "MMM dd, yyyy HH:mm") : "-",
+      Item: (m as any).inventory_items?.name || "Unknown",
+      Type: m.movement_type === "in" ? "Stock In" : m.movement_type === "out" ? "Stock Out" : "Adjustment",
+      Previous: m.previous_stock,
+      Quantity: `${m.movement_type === "in" ? "+" : m.movement_type === "out" ? "-" : ""}${m.quantity}`,
+      "New Stock": m.new_stock,
+      Notes: m.notes || "-",
+    }));
+    exportToPDF(data, "Stock Movement History", "stock_history");
   };
 
   const handleExportExcel = () => {

@@ -1,6 +1,7 @@
 import { forwardRef } from "react";
 import { format } from "date-fns";
 import type { CartItem } from "@/pages/POS";
+import cherryLogo from "@/assets/cherry-logo.png";
 
 interface ReceiptProps {
   orderNumber: string;
@@ -58,10 +59,13 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           {copyType === "customer" ? "CUSTOMER COPY" : "OFFICE COPY"}
         </div>
 
-        {/* Header */}
+        {/* Header with Logo */}
         <div className="text-center mb-4">
-          <h1 className="text-xl font-bold">CHERRY DINING</h1>
-          <p className="text-xs">& Lounge</p>
+          <img 
+            src={cherryLogo} 
+            alt="Cherry Dining & Lounge" 
+            className="mx-auto mb-2 max-w-[150px] h-auto"
+          />
           <p className="text-xs mt-2">Nicton Road</p>
           <p className="text-xs">Bayelsa, Nigeria</p>
           <p className="text-xs">Tel: +234 800 000 0000</p>

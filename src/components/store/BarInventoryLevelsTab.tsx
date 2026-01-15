@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertTriangle, Package, Store, FileDown, FileSpreadsheet } from "lucide-react";
-import { exportTableToPDF, exportToExcel } from "@/lib/exportUtils";
+import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 
 export const BarInventoryLevelsTab = () => {
   const { data: bars = [] } = useBars();
@@ -38,18 +38,17 @@ export const BarInventoryLevelsTab = () => {
 
   const handleExportPDF = () => {
     if (!selectedBar) return;
-    const headers = ["Item", "Current Stock", "Min Level", "Status"];
-    const rows = inventory.map((item) => {
+    const data = inventory.map((item) => {
       const isOutOfStock = item.current_stock <= 0;
       const isLowStock = item.current_stock <= item.min_stock_level;
-      return [
-        item.inventory_item?.name || "Unknown",
-        `${item.current_stock} ${item.inventory_item?.unit || ""}`,
-        item.min_stock_level,
-        isOutOfStock ? "Out of Stock" : isLowStock ? "Low Stock" : "In Stock",
-      ];
+      return {
+        Item: item.inventory_item?.name || "Unknown",
+        "Current Stock": `${item.current_stock} ${item.inventory_item?.unit || ""}`,
+        "Min Level": item.min_stock_level,
+        Status: isOutOfStock ? "Out of Stock" : isLowStock ? "Low Stock" : "In Stock",
+      };
     });
-    exportTableToPDF(`Bar Inventory - ${selectedBar.name}`, headers, rows);
+    exportToPDF(data, `Bar Inventory - ${selectedBar.name}`, `bar_inventory_${selectedBar.name}`);
   };
 
   const handleExportExcel = () => {

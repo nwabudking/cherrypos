@@ -32,6 +32,7 @@ import {
   Warehouse,
   Store,
   Package,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 interface NavItem {
@@ -53,6 +54,7 @@ const operationsNavItems: NavItem[] = [
   { title: 'Bar', url: '/bar', icon: Wine, roles: ['super_admin', 'manager', 'bar_staff', 'cashier'] },
   { title: 'Kitchen', url: '/kitchen', icon: ChefHat, roles: ['super_admin', 'manager', 'kitchen_staff'] },
   { title: 'Bar Inventory', url: '/bar-inventory', icon: Package, roles: ['cashier'] },
+  { title: 'Transfers', url: '/transfers', icon: ArrowRightLeft, roles: ['super_admin', 'manager', 'cashier', 'store_admin'] },
 ];
 
 const storeNavItems: NavItem[] = [
