@@ -1,0 +1,6 @@
+[
+  {"id":"d4deda12-f1f3-49d1-a004-4e064aceec4b","user_id":"0e48cbab-2640-4222-853d-0562468b56e7","bar_id":"5751bd92-f4ae-484f-98dd-cbeddf759572","assigned_by":"9b166232-2ac6-4529-a1e9-240ca5b915cc","is_active":true,"created_at":"2026-01-13T02:02:41.341842+00:00","updated_at":"2026-01-13T02:02:41.341842+00:00"},
+  {"id":"6e03af6c-3fa9-45ec-9451-9ebc9c908696","user_id":"0ea5c95f-8ba6-492f-a8c0-3139add4ed17","bar_id":"b13e2f05-a1c8-48d3-879c-c918a3dc335c","assigned_by":"9b166232-2ac6-4529-a1e9-240ca5b915cc","is_active":true,"created_at":"2026-01-13T02:02:52.1976+00:00","updated_at":"2026-01-13T02:02:52.1976+00:00"},
+  {"id":"17960209-2764-45a3-952b-66ea6f083669","user_id":"962a8175-2cbb-4209-90b2-d3d3d68183ab","bar_id":"5751bd92-f4ae-484f-98dd-cbeddf759572","assigned_by":"9b166232-2ac6-4529-a1e9-240ca5b915cc","is_active":true,"created_at":"2026-01-13T02:12:19.406979+00:00","updated_at":"2026-01-15T05:03:03.27913+00:00"},
+  {"id":"f6b38baa-edd4-4e72-8a4f-41a1d78fb39f","user_id":"74769099-bea0-4d12-b9e9-b14a5406f340","bar_id":"b13e2f05-a1c8-48d3-879c-c918a3dc335c","assigned_by":"9b166232-2ac6-4529-a1e9-240ca5b915cc","is_active":true,"created_at":"2026-01-13T02:12:40.150054+00:00","updated_at":"2026-01-15T05:03:33.079233+00:00"}
+]

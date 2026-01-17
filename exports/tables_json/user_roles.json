@@ -1,0 +1,16 @@
+[
+  {"id":"71c7bac9-c241-4513-9254-487cae7729d9","user_id":"9b166232-2ac6-4529-a1e9-240ca5b915cc","role":"super_admin","created_at":"2025-12-23T21:58:39.917926+00:00"},
+  {"id":"355257f1-1afd-4bf2-b065-bb2610b30a8d","user_id":"ea2399dd-26cf-4266-94a6-b03bf08854e2","role":"cashier","created_at":"2025-12-24T18:11:19.949637+00:00"},
+  {"id":"b052867a-6fb5-4758-9643-3be99b1d3cd0","user_id":"614e9f7d-85cb-44e3-95cd-842d6360e04e","role":"cashier","created_at":"2025-12-24T18:11:20.632531+00:00"},
+  {"id":"df081d32-a537-4434-80d5-9ec08fd3f6da","user_id":"64bda16e-0502-4227-a960-08bf63db040c","role":"cashier","created_at":"2025-12-24T18:11:20.996801+00:00"},
+  {"id":"04120a5a-f5ae-456d-a65d-28944cffbd24","user_id":"a15167a4-00a5-4e70-87d3-b83bf37e8f9d","role":"cashier","created_at":"2025-12-24T18:11:21.940481+00:00"},
+  {"id":"e21aa9f7-3158-41c7-bf91-00a13860eaae","user_id":"cf4dff81-7f48-44d6-9876-c48c600e78ee","role":"cashier","created_at":"2025-12-24T18:11:22.335566+00:00"},
+  {"id":"1b02311f-6ce6-476c-a31b-73bceb7599cd","user_id":"0e48cbab-2640-4222-853d-0562468b56e7","role":"cashier","created_at":"2025-12-24T18:11:22.624638+00:00"},
+  {"id":"4893ebf4-f225-4a9f-92ad-11266d020886","user_id":"ec8f88f5-6832-447c-b901-2e615c77c1c4","role":"cashier","created_at":"2025-12-24T18:11:22.879996+00:00"},
+  {"id":"662ea49c-0fb3-4b2b-bcba-e43dd6661945","user_id":"bbab6438-ce4f-489c-9880-370b32f192a4","role":"cashier","created_at":"2025-12-24T18:11:23.132296+00:00"},
+  {"id":"e2355259-ad87-4739-b09c-ecf238120050","user_id":"0ea5c95f-8ba6-492f-a8c0-3139add4ed17","role":"cashier","created_at":"2025-12-24T18:11:23.40015+00:00"},
+  {"id":"6caacdd7-aa4e-45a5-87bb-aee1e2fd7575","user_id":"096a144c-06e5-42a9-a90f-ea2e2ed7e912","role":"cashier","created_at":"2025-12-24T18:17:38.185801+00:00"},
+  {"id":"fe321cd5-48f1-49f6-a69f-91f0d068bb15","user_id":"962a8175-2cbb-4209-90b2-d3d3d68183ab","role":"cashier","created_at":"2026-01-13T02:11:21.871538+00:00"},
+  {"id":"74bf6c7d-0ac5-4c6b-84e7-47e608841522","user_id":"74769099-bea0-4d12-b9e9-b14a5406f340","role":"cashier","created_at":"2026-01-13T02:12:04.863379+00:00"},
+  {"id":"4e3a6771-6956-470a-91f0-9f3052caeb99","user_id":"20963cb1-fa29-4c4b-a0df-0506c4cbbdc8","role":"manager","created_at":"2026-01-07T22:12:39.931384+00:00"}
+]

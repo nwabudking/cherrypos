@@ -1,0 +1,4 @@
+[
+  {"id":"b13e2f05-a1c8-48d3-879c-c918a3dc335c","name":"Lounge (upstirs)","description":"Lounge and Bar (upstirs)","is_active":true,"created_at":"2026-01-07T22:00:03.630005+00:00","updated_at":"2026-01-08T12:35:38.179372+00:00","created_by":"9b166232-2ac6-4529-a1e9-240ca5b915cc"},
+  {"id":"5751bd92-f4ae-484f-98dd-cbeddf759572","name":"Cherry Bar (Downstairs)","description":"Open Bar","is_active":true,"created_at":"2026-01-08T12:36:19.269258+00:00","updated_at":"2026-01-08T12:36:19.269258+00:00","created_by":"9b166232-2ac6-4529-a1e9-240ca5b915cc"}
+]

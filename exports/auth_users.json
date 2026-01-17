@@ -1,0 +1,16 @@
+[
+  {"id":"9b166232-2ac6-4529-a1e9-240ca5b915cc","email":"admin@cherrydiningloung.com","full_name":"adminnnnn","role":"super_admin"},
+  {"id":"ea2399dd-26cf-4266-94a6-b03bf08854e2","email":"cherrydinninglounge@icloud.com","full_name":"Cherry D&L","role":"cashier"},
+  {"id":"614e9f7d-85cb-44e3-95cd-842d6360e04e","email":"mireille@cherrydining.local","full_name":"Mireille Weris","role":"cashier"},
+  {"id":"64bda16e-0502-4227-a960-08bf63db040c","email":"destiny@cherrydining.local","full_name":"Destiny Sunny","role":"cashier"},
+  {"id":"a15167a4-00a5-4e70-87d3-b83bf37e8f9d","email":"blessing2@cherrydining.local","full_name":"Blessing Samson","role":"cashier"},
+  {"id":"cf4dff81-7f48-44d6-9876-c48c600e78ee","email":"jennifer@cherrydining.local","full_name":"Jennifer Sere","role":"cashier"},
+  {"id":"0e48cbab-2640-4222-853d-0562468b56e7","email":"amabel@cherrydining.local","full_name":"Amabel Chinonye","role":"cashier"},
+  {"id":"ec8f88f5-6832-447c-b901-2e615c77c1c4","email":"gracee@cherrydining.local","full_name":"Grace Ezekiel","role":"cashier"},
+  {"id":"bbab6438-ce4f-489c-9880-370b32f192a4","email":"goldere@cherrydining.local","full_name":"Goldere Binalayefa","role":"cashier"},
+  {"id":"0ea5c95f-8ba6-492f-a8c0-3139add4ed17","email":"betty@cherrydining.local","full_name":"Betty Owoubiri","role":"cashier"},
+  {"id":"096a144c-06e5-42a9-a90f-ea2e2ed7e912","email":"cashier@local.com","full_name":"cashier","role":"cashier"},
+  {"id":"20963cb1-fa29-4c4b-a0df-0506c4cbbdc8","email":"manager@cherrydining.local","full_name":null,"role":"manager"},
+  {"id":"962a8175-2cbb-4209-90b2-d3d3d68183ab","email":"cashier1@cherrydining.local","full_name":null,"role":"cashier"},
+  {"id":"74769099-bea0-4d12-b9e9-b14a5406f340","email":"cashier2@cherrydining.local","full_name":null,"role":"cashier"}
+]
