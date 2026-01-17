@@ -17,6 +17,7 @@ import {
   Utensils,
 } from "lucide-react";
 import { format, startOfDay, endOfDay } from "date-fns";
+import cherryLogo from "@/assets/cherry-logo.png";
 
 interface KPICardProps {
   title: string;
@@ -189,13 +190,16 @@ const Dashboard = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Welcome header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">
-          {getGreeting()}, {profile?.full_name?.split(" ")[0] || "there"}!
-        </h1>
-        <p className="text-muted-foreground">
-          Here's what's happening at Cherry Dining Lounge today.
-        </p>
+      <div className="flex items-center gap-4">
+        <img src={cherryLogo} alt="Cherry Dining & Lounge" className="w-14 h-auto" />
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            {getGreeting()}, {profile?.full_name?.split(" ")[0] || "there"}!
+          </h1>
+          <p className="text-muted-foreground">
+            Here's what's happening at Cherry Dining Lounge today.
+          </p>
+        </div>
       </div>
 
       {/* KPI Cards */}

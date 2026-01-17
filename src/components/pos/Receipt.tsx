@@ -64,7 +64,7 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           <img 
             src={cherryLogo} 
             alt="Cherry Dining & Lounge" 
-            className="mx-auto mb-2 max-w-[150px] h-auto"
+            className="mx-auto mb-2 w-[60px] h-auto"
           />
           <p className="text-xs mt-2">Nicton Road</p>
           <p className="text-xs">Bayelsa, Nigeria</p>
