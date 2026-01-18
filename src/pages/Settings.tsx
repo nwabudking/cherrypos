@@ -19,7 +19,8 @@ import {
   Mail,
   DollarSign,
   Clock,
-  Eye
+  Eye,
+  Printer
 } from "lucide-react";
 import { Receipt } from "@/components/pos/Receipt";
 import { Button } from "@/components/ui/button";
@@ -82,7 +83,42 @@ const Settings = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const receiptPreviewRef = useRef<HTMLDivElement>(null);
 
+  const handlePrintTestReceipt = () => {
+    if (!receiptPreviewRef.current) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error("Please allow popups to print the test receipt");
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Test Receipt</title>
+          <style>
+            body { margin: 0; padding: 0; }
+            @media print {
+              body { margin: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          ${receiptPreviewRef.current.innerHTML}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
   const canEditSettings = role === "super_admin" || role === "manager";
 
   const { data: settings, isLoading: settingsLoading } = useSettings();
@@ -429,10 +465,11 @@ const Settings = () => {
                 See how your receipt will look when printed
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="flex justify-center">
                 <div className="border border-border rounded-lg shadow-sm overflow-hidden transform scale-90 origin-top">
                   <Receipt
+                    ref={receiptPreviewRef}
                     orderNumber="ORD-001234"
                     orderType="dine_in"
                     tableNumber="T5"
@@ -450,9 +487,20 @@ const Settings = () => {
                   />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground text-center mt-4">
-                This is a sample preview. Actual receipts will use real order data.
-              </p>
+              
+              <div className="flex flex-col items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handlePrintTestReceipt}
+                  className="gap-2"
+                >
+                  <Printer className="h-4 w-4" />
+                  Print Test Receipt
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  This is a sample preview. Actual receipts will use real order data.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
