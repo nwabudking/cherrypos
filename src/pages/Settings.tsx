@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { 
   Settings as SettingsIcon, 
   Building2, 
-  Receipt, 
+  Receipt as ReceiptIcon, 
   Shield, 
   Globe, 
   Save, 
@@ -18,8 +18,10 @@ import {
   Phone,
   Mail,
   DollarSign,
-  Clock
+  Clock,
+  Eye
 } from "lucide-react";
+import { Receipt } from "@/components/pos/Receipt";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -163,8 +165,8 @@ const Settings = () => {
             <Building2 className="h-4 w-4 hidden sm:block" />
             Restaurant
           </TabsTrigger>
-          <TabsTrigger value="receipt" className="gap-2">
-            <Receipt className="h-4 w-4 hidden sm:block" />
+        <TabsTrigger value="receipt" className="gap-2">
+            <ReceiptIcon className="h-4 w-4 hidden sm:block" />
             Receipt
           </TabsTrigger>
           <TabsTrigger value="regional" className="gap-2">
@@ -378,7 +380,7 @@ const Settings = () => {
           <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-primary" />
+                <ReceiptIcon className="h-5 w-5 text-primary" />
                 Receipt Content
               </CardTitle>
               <CardDescription>
@@ -413,6 +415,44 @@ const Settings = () => {
                   Save Changes
                 </Button>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Receipt Preview */}
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5 text-primary" />
+                Receipt Preview
+              </CardTitle>
+              <CardDescription>
+                See how your receipt will look when printed
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-center">
+                <div className="border border-border rounded-lg shadow-sm overflow-hidden transform scale-90 origin-top">
+                  <Receipt
+                    orderNumber="ORD-001234"
+                    orderType="dine_in"
+                    tableNumber="T5"
+                    items={[
+                      { id: "1", menuItemId: "m1", name: "Grilled Chicken", price: 4500, quantity: 2 },
+                      { id: "2", menuItemId: "m2", name: "Jollof Rice", price: 2500, quantity: 2 },
+                      { id: "3", menuItemId: "m3", name: "Chapman", price: 1500, quantity: 3, notes: "Less sugar" },
+                    ]}
+                    subtotal={18500}
+                    total={18500}
+                    paymentMethod="card"
+                    cashierName="Sample Cashier"
+                    barName="Main Bar"
+                    copyType="customer"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground text-center mt-4">
+                This is a sample preview. Actual receipts will use real order data.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
