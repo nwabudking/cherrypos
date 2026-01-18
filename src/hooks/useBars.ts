@@ -384,26 +384,27 @@ export function useCreateBarToBarTransfer() {
         .select('current_stock')
         .eq('bar_id', sourceBarId)
         .eq('inventory_item_id', inventoryItemId)
-        .single();
+        .maybeSingle();
       
       if (stockError) throw new Error('Failed to check source inventory');
       if (!sourceInventory || sourceInventory.current_stock < quantity) {
-        throw new Error('Insufficient stock at source bar');
+        throw new Error(`Insufficient stock at source bar. Available: ${sourceInventory?.current_stock || 0}`);
       }
       
+      // ALWAYS deduct from source bar immediately (both admin and cashier transfers)
+      const { error: deductError } = await supabase
+        .from('bar_inventory')
+        .update({ 
+          current_stock: sourceInventory.current_stock - quantity,
+          updated_at: new Date().toISOString()
+        })
+        .eq('bar_id', sourceBarId)
+        .eq('inventory_item_id', inventoryItemId);
+      
+      if (deductError) throw new Error('Failed to deduct from source inventory');
+      
       if (isAdminTransfer) {
-        // Admin: Execute transfer immediately
-        // Deduct from source
-        await supabase
-          .from('bar_inventory')
-          .update({ 
-            current_stock: sourceInventory.current_stock - quantity,
-            updated_at: new Date().toISOString()
-          })
-          .eq('bar_id', sourceBarId)
-          .eq('inventory_item_id', inventoryItemId);
-        
-        // Add to destination
+        // Admin: Complete transfer immediately - add to destination
         const { data: destInventory } = await supabase
           .from('bar_inventory')
           .select('*')
@@ -447,7 +448,7 @@ export function useCreateBarToBarTransfer() {
         
         if (error) throw error;
       } else {
-        // Cashier: Create pending request
+        // Cashier: Create pending request (stock already deducted)
         const { error } = await supabase
           .from('bar_to_bar_transfers')
           .insert({
@@ -466,7 +467,11 @@ export function useCreateBarToBarTransfer() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: barsKeys.all });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      toast.success(variables.isAdminTransfer ? 'Transfer completed successfully' : 'Transfer request submitted');
+      toast.success(
+        variables.isAdminTransfer 
+          ? 'Transfer completed successfully' 
+          : 'Transfer sent! Items deducted from your inventory. Awaiting acceptance.'
+      );
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to create transfer');
@@ -495,31 +500,11 @@ export function useRespondToTransfer() {
         .single();
       
       if (fetchError || !transfer) throw new Error('Transfer not found');
+      if (transfer.status !== 'pending') throw new Error('Transfer already processed');
       
       if (response === 'accepted') {
-        // Check source bar has sufficient stock
-        const { data: sourceInventory, error: stockError } = await supabase
-          .from('bar_inventory')
-          .select('current_stock')
-          .eq('bar_id', transfer.source_bar_id)
-          .eq('inventory_item_id', transfer.inventory_item_id)
-          .single();
-        
-        if (stockError || !sourceInventory || sourceInventory.current_stock < transfer.quantity) {
-          throw new Error('Insufficient stock at source bar');
-        }
-        
-        // Deduct from source
-        await supabase
-          .from('bar_inventory')
-          .update({ 
-            current_stock: sourceInventory.current_stock - transfer.quantity,
-            updated_at: new Date().toISOString()
-          })
-          .eq('bar_id', transfer.source_bar_id)
-          .eq('inventory_item_id', transfer.inventory_item_id);
-        
-        // Add to destination
+        // Stock was already deducted from source when transfer was created
+        // Now add to destination bar
         const { data: destInventory } = await supabase
           .from('bar_inventory')
           .select('*')
@@ -558,7 +543,36 @@ export function useRespondToTransfer() {
         
         if (error) throw error;
       } else {
-        // Reject the transfer
+        // REJECTED: Return stock to source bar
+        const { data: sourceInventory } = await supabase
+          .from('bar_inventory')
+          .select('current_stock')
+          .eq('bar_id', transfer.source_bar_id)
+          .eq('inventory_item_id', transfer.inventory_item_id)
+          .maybeSingle();
+        
+        if (sourceInventory) {
+          await supabase
+            .from('bar_inventory')
+            .update({ 
+              current_stock: sourceInventory.current_stock + transfer.quantity,
+              updated_at: new Date().toISOString()
+            })
+            .eq('bar_id', transfer.source_bar_id)
+            .eq('inventory_item_id', transfer.inventory_item_id);
+        } else {
+          // Re-create the inventory record if it was deleted
+          await supabase
+            .from('bar_inventory')
+            .insert({
+              bar_id: transfer.source_bar_id,
+              inventory_item_id: transfer.inventory_item_id,
+              current_stock: transfer.quantity,
+              min_stock_level: 5,
+            });
+        }
+        
+        // Update transfer status to rejected
         const { error } = await supabase
           .from('bar_to_bar_transfers')
           .update({
@@ -574,7 +588,11 @@ export function useRespondToTransfer() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: barsKeys.all });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      toast.success(variables.response === 'accepted' ? 'Transfer accepted' : 'Transfer rejected');
+      toast.success(
+        variables.response === 'accepted' 
+          ? 'Transfer accepted! Items added to your inventory.' 
+          : 'Transfer rejected. Items returned to sender.'
+      );
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to respond to transfer');
