@@ -157,7 +157,7 @@ export const AppSidebar = () => {
 
       <SidebarFooter className="p-4 border-t border-sidebar-border">
         <div className="text-xs text-muted-foreground text-center">
-          © 2024 Cherry Dining
+          © {new Date().getFullYear()} Cherry Dining
         </div>
       </SidebarFooter>
     </Sidebar>
