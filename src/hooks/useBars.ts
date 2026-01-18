@@ -361,125 +361,40 @@ export function useCreateBarToBarTransfer() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({
-      sourceBarId,
-      destinationBarId,
-      inventoryItemId,
-      quantity,
-      notes,
-      isAdminTransfer,
-    }: {
-      sourceBarId: string;
-      destinationBarId: string;
-      inventoryItemId: string;
-      quantity: number;
-      notes?: string;
-      isAdminTransfer?: boolean;
-    }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Get current stock at source bar
-      const { data: sourceInventory, error: stockError } = await supabase
-        .from('bar_inventory')
-        .select('id, current_stock')
-        .eq('bar_id', sourceBarId)
-        .eq('inventory_item_id', inventoryItemId)
-        .maybeSingle();
-      
-      if (stockError) throw new Error('Failed to check source inventory');
-      if (!sourceInventory || sourceInventory.current_stock < quantity) {
-        throw new Error(`Insufficient stock at source bar. Available: ${sourceInventory?.current_stock || 0}`);
-      }
-      
-      const newStock = sourceInventory.current_stock - quantity;
-      
-      // ALWAYS deduct from source bar immediately (both admin and cashier transfers)
-      const { error: deductError } = await supabase
-        .from('bar_inventory')
-        .update({ 
-          current_stock: newStock,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', sourceInventory.id);
-      
-      if (deductError) {
-        console.error('Deduct error:', deductError);
-        throw new Error('Failed to deduct from source inventory');
-      }
-      
-      console.log(`Deducted ${quantity} from source bar. New stock: ${newStock}`);
-      
-      if (isAdminTransfer) {
-        // Admin: Complete transfer immediately - add to destination
-        const { data: destInventory } = await supabase
-          .from('bar_inventory')
-          .select('id, current_stock')
-          .eq('bar_id', destinationBarId)
-          .eq('inventory_item_id', inventoryItemId)
-          .maybeSingle();
-        
-        if (destInventory) {
-          const { error: updateDestError } = await supabase
-            .from('bar_inventory')
-            .update({ 
-              current_stock: destInventory.current_stock + quantity,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', destInventory.id);
-          
-          if (updateDestError) {
-            console.error('Update dest error:', updateDestError);
-          }
-        } else {
-          const { error: insertDestError } = await supabase
-            .from('bar_inventory')
-            .insert({
-              bar_id: destinationBarId,
-              inventory_item_id: inventoryItemId,
-              current_stock: quantity,
-              min_stock_level: 5,
-            });
-          
-          if (insertDestError) {
-            console.error('Insert dest error:', insertDestError);
-          }
-        }
-        
-        // Create completed transfer record
-        const { error } = await supabase
-          .from('bar_to_bar_transfers')
-          .insert({
-            source_bar_id: sourceBarId,
-            destination_bar_id: destinationBarId,
-            inventory_item_id: inventoryItemId,
-            quantity,
-            notes,
-            status: 'completed',
-            requested_by: user?.id,
-            approved_by: user?.id,
-            completed_at: new Date().toISOString(),
-          });
-        
+      mutationFn: async ({
+        sourceBarId,
+        destinationBarId,
+        inventoryItemId,
+        quantity,
+        notes,
+        isAdminTransfer,
+      }: {
+        sourceBarId: string;
+        destinationBarId: string;
+        inventoryItemId: string;
+        quantity: number;
+        notes?: string;
+        isAdminTransfer?: boolean;
+      }) => {
+        // IMPORTANT: Do inventory updates server-side (RPC) so cashiers don't need UPDATE permission on bar_inventory
+        const { data, error } = await supabase.rpc('create_bar_to_bar_transfer', {
+          p_source_bar_id: sourceBarId,
+          p_destination_bar_id: destinationBarId,
+          p_inventory_item_id: inventoryItemId,
+          p_quantity: quantity,
+          p_notes: notes ?? null,
+          p_admin_complete: !!isAdminTransfer,
+        });
+
         if (error) throw error;
-      } else {
-        // Cashier: Create pending request (stock already deducted)
-        const { error } = await supabase
-          .from('bar_to_bar_transfers')
-          .insert({
-            source_bar_id: sourceBarId,
-            destination_bar_id: destinationBarId,
-            inventory_item_id: inventoryItemId,
-            quantity,
-            notes,
-            status: 'pending',
-            requested_by: user?.id,
-          });
-        
-        if (error) throw error;
-      }
-      
-      return { sourceBarId, destinationBarId };
-    },
+        return data as unknown as {
+          success: boolean;
+          transfer_id: string;
+          status: string;
+          source_bar_id: string;
+          destination_bar_id: string;
+        };
+      },
     onSuccess: (result, variables) => {
       // Invalidate all bar-related queries to refresh inventory
       queryClient.invalidateQueries({ queryKey: barsKeys.all });
@@ -511,111 +426,38 @@ export function useRespondToTransfer() {
       transferId: string;
       response: 'accepted' | 'rejected';
     }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Get the transfer details
-      const { data: transfer, error: fetchError } = await supabase
-        .from('bar_to_bar_transfers')
-        .select('*')
-        .eq('id', transferId)
-        .single();
-      
-      if (fetchError || !transfer) throw new Error('Transfer not found');
-      if (transfer.status !== 'pending') throw new Error('Transfer already processed');
-      
-      if (response === 'accepted') {
-        // Stock was already deducted from source when transfer was created
-        // Now add to destination bar
-        const { data: destInventory } = await supabase
-          .from('bar_inventory')
-          .select('*')
-          .eq('bar_id', transfer.destination_bar_id)
-          .eq('inventory_item_id', transfer.inventory_item_id)
-          .maybeSingle();
-        
-        if (destInventory) {
-          await supabase
-            .from('bar_inventory')
-            .update({ 
-              current_stock: destInventory.current_stock + transfer.quantity,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', destInventory.id);
-        } else {
-          await supabase
-            .from('bar_inventory')
-            .insert({
-              bar_id: transfer.destination_bar_id,
-              inventory_item_id: transfer.inventory_item_id,
-              current_stock: transfer.quantity,
-              min_stock_level: 5,
-            });
-        }
-        
-        // Update transfer status to completed
-        const { error } = await supabase
-          .from('bar_to_bar_transfers')
-          .update({
-            status: 'completed',
-            approved_by: user?.id,
-            completed_at: new Date().toISOString(),
-          })
-          .eq('id', transferId);
-        
-        if (error) throw error;
-      } else {
-        // REJECTED: Return stock to source bar
-        const { data: sourceInventory } = await supabase
-          .from('bar_inventory')
-          .select('current_stock')
-          .eq('bar_id', transfer.source_bar_id)
-          .eq('inventory_item_id', transfer.inventory_item_id)
-          .maybeSingle();
-        
-        if (sourceInventory) {
-          await supabase
-            .from('bar_inventory')
-            .update({ 
-              current_stock: sourceInventory.current_stock + transfer.quantity,
-              updated_at: new Date().toISOString()
-            })
-            .eq('bar_id', transfer.source_bar_id)
-            .eq('inventory_item_id', transfer.inventory_item_id);
-        } else {
-          // Re-create the inventory record if it was deleted
-          await supabase
-            .from('bar_inventory')
-            .insert({
-              bar_id: transfer.source_bar_id,
-              inventory_item_id: transfer.inventory_item_id,
-              current_stock: transfer.quantity,
-              min_stock_level: 5,
-            });
-        }
-        
-        // Update transfer status to rejected
-        const { error } = await supabase
-          .from('bar_to_bar_transfers')
-          .update({
-            status: 'rejected',
-            approved_by: user?.id,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', transferId);
-        
-        if (error) throw error;
-      }
+      // IMPORTANT: perform inventory updates server-side (RPC)
+      const { data, error } = await supabase.rpc('respond_bar_to_bar_transfer', {
+        p_transfer_id: transferId,
+        p_response: response,
+      });
+
+      if (error) throw error;
+      return data as unknown as {
+        success: boolean;
+        transfer_id: string;
+        status: string;
+        source_bar_id: string;
+        destination_bar_id: string;
+        inventory_item_id: string;
+      };
     },
-    onSuccess: (_, variables) => {
-      // Invalidate all bar-related queries
+    onSuccess: (result, variables) => {
+      // Invalidate queries so both bars refresh inventory
       queryClient.invalidateQueries({ queryKey: barsKeys.all });
       queryClient.invalidateQueries({ queryKey: barsKeys.barToBarTransfers() });
+      if (result?.source_bar_id) {
+        queryClient.invalidateQueries({ queryKey: barsKeys.inventory(result.source_bar_id) });
+      }
+      if (result?.destination_bar_id) {
+        queryClient.invalidateQueries({ queryKey: barsKeys.inventory(result.destination_bar_id) });
+      }
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      
+
       toast.success(
-        variables.response === 'accepted' 
-          ? 'Transfer accepted! Items added to your inventory.' 
-          : 'Transfer rejected. Items returned to sender.'
+        variables.response === 'accepted'
+          ? "Transfer accepted! Items added to your inventory."
+          : "Transfer rejected. Items returned to sender."
       );
     },
     onError: (error: Error) => {

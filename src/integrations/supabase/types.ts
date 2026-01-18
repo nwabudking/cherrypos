@@ -801,6 +801,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      create_bar_to_bar_transfer: {
+        Args: {
+          p_admin_complete?: boolean
+          p_destination_bar_id: string
+          p_inventory_item_id: string
+          p_notes?: string
+          p_quantity: number
+          p_source_bar_id: string
+        }
+        Returns: Json
+      }
       deduct_bar_inventory: {
         Args: {
           p_bar_id: string
@@ -820,6 +831,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      respond_bar_to_bar_transfer: {
+        Args: { p_response: string; p_transfer_id: string }
+        Returns: Json
       }
       transfer_store_to_bar: {
         Args: {
