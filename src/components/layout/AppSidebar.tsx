@@ -44,7 +44,7 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'POS', url: '/pos', icon: ShoppingCart, roles: ['super_admin', 'manager', 'cashier'] },
+  { title: 'POS', url: '/pos', icon: ShoppingCart, roles: ['super_admin', 'manager', 'cashier', 'waitstaff'] },
   { title: 'Orders', url: '/orders', icon: ClipboardList },
   { title: 'Order History', url: '/order-history', icon: History, roles: ['super_admin', 'manager', 'cashier'] },
   { title: 'EOD Report', url: '/eod-report', icon: FileText, roles: ['super_admin', 'manager', 'cashier'] },
@@ -54,7 +54,7 @@ const operationsNavItems: NavItem[] = [
   { title: 'Bar', url: '/bar', icon: Wine, roles: ['super_admin', 'manager', 'bar_staff', 'cashier'] },
   { title: 'Kitchen', url: '/kitchen', icon: ChefHat, roles: ['super_admin', 'manager', 'kitchen_staff'] },
   { title: 'Bar Inventory', url: '/bar-inventory', icon: Package, roles: ['cashier'] },
-  { title: 'Transfers', url: '/transfers', icon: ArrowRightLeft, roles: ['super_admin', 'manager', 'cashier', 'store_admin'] },
+  { title: 'Transfers', url: '/transfers', icon: ArrowRightLeft, roles: ['super_admin', 'manager', 'cashier', 'store_admin', 'waitstaff'] },
 ];
 
 const storeNavItems: NavItem[] = [

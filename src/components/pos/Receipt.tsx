@@ -138,7 +138,7 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           )}
           {cashierName && (
             <div className="flex justify-between">
-              <span>Cashier:</span>
+              <span>Staff:</span>
               <span>{cashierName}</span>
             </div>
           )}

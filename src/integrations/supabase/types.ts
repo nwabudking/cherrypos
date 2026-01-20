@@ -641,6 +641,7 @@ export type Database = {
           phone: string | null
           receipt_footer: string | null
           receipt_show_logo: boolean | null
+          receipt_width: string | null
           tagline: string | null
           timezone: string | null
           updated_at: string | null
@@ -658,6 +659,7 @@ export type Database = {
           phone?: string | null
           receipt_footer?: string | null
           receipt_show_logo?: boolean | null
+          receipt_width?: string | null
           tagline?: string | null
           timezone?: string | null
           updated_at?: string | null
@@ -675,6 +677,7 @@ export type Database = {
           phone?: string | null
           receipt_footer?: string | null
           receipt_show_logo?: boolean | null
+          receipt_width?: string | null
           tagline?: string | null
           timezone?: string | null
           updated_at?: string | null
@@ -857,6 +860,7 @@ export type Database = {
         | "accountant"
         | "store_user"
         | "store_admin"
+        | "waitstaff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -994,6 +998,7 @@ export const Constants = {
         "accountant",
         "store_user",
         "store_admin",
+        "waitstaff",
       ],
     },
   },

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Banknote, CreditCard, Building2, Smartphone, Loader2, Printer, Check } from "lucide-react";
 import { Receipt } from "./Receipt";
+import { useSettings } from "@/hooks/useSettings";
 import type { CartItem } from "@/pages/POS";
 
 interface CheckoutDialogProps {
@@ -24,6 +25,7 @@ interface CheckoutDialogProps {
   completedOrder: { order_number: string } | null;
   onClose: () => void;
   cashierName?: string;
+  barName?: string;
   canReprint?: boolean;
   insufficientStock?: Array<{ name: string; available: number; requested: number }>;
 }
@@ -56,36 +58,23 @@ export const CheckoutDialog = ({
   completedOrder,
   onClose,
   cashierName,
+  barName,
   canReprint = false,
   insufficientStock = [],
 }: CheckoutDialogProps) => {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [hasPrinted, setHasPrinted] = useState(false);
-  const [autoPrintDone, setAutoPrintDone] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
+  const { data: settings } = useSettings();
+
+  // Get receipt width from settings (default 80mm)
+  const receiptWidth = settings?.receipt_width || '80mm';
 
   const handleConfirm = () => {
     if (selectedMethod) {
       onConfirmPayment(selectedMethod);
     }
   };
-
-  // Auto-print receipts immediately after payment for cashiers (non-reprint users)
-  const handleAutoPrint = () => {
-    if (!canReprint && !autoPrintDone && completedOrder) {
-      // Small delay to ensure receipt is rendered
-      setTimeout(() => {
-        handlePrintBothImmediate();
-        setAutoPrintDone(true);
-        setHasPrinted(true);
-      }, 300);
-    }
-  };
-
-  // Trigger auto-print when order completes
-  if (completedOrder && !autoPrintDone && !canReprint) {
-    handleAutoPrint();
-  }
 
   const handlePrint = (copyType: "customer" | "office") => {
     const printContent = receiptRef.current;
@@ -106,17 +95,17 @@ export const CheckoutDialog = ({
             body { 
               font-family: 'Courier New', Courier, monospace;
               padding: 10px;
-              max-width: 80mm;
+              max-width: ${receiptWidth};
               margin: 0 auto;
             }
-            .receipt { font-size: 12px; }
+            .receipt { font-size: ${receiptWidth === '58mm' ? '10px' : '12px'}; }
             .text-center { text-align: center; }
             .text-right { text-align: right; }
             .font-bold { font-weight: bold; }
-            .text-xl { font-size: 18px; }
-            .text-base { font-size: 14px; }
-            .text-xs { font-size: 11px; }
-            .text-10 { font-size: 10px; }
+            .text-xl { font-size: ${receiptWidth === '58mm' ? '14px' : '18px'}; }
+            .text-base { font-size: ${receiptWidth === '58mm' ? '12px' : '14px'}; }
+            .text-xs { font-size: ${receiptWidth === '58mm' ? '9px' : '11px'}; }
+            .text-10 { font-size: ${receiptWidth === '58mm' ? '8px' : '10px'}; }
             .my-3 { margin: 10px 0; }
             .mt-2 { margin-top: 8px; }
             .mt-4 { margin-top: 16px; }
@@ -135,7 +124,7 @@ export const CheckoutDialog = ({
               margin-bottom: 10px;
             }
             @media print {
-              body { width: 80mm; }
+              body { width: ${receiptWidth}; }
             }
           </style>
         </head>
@@ -152,25 +141,19 @@ export const CheckoutDialog = ({
   };
 
   const handlePrintBoth = () => {
-    if (!canReprint && hasPrinted) return; // Prevent re-printing for cashiers
+    if (!canReprint && hasPrinted) return; // Prevent re-printing for cashiers/waitstaff
     handlePrint("customer");
     setTimeout(() => handlePrint("office"), 500);
     setHasPrinted(true);
   };
 
-  const handlePrintBothImmediate = () => {
-    handlePrint("customer");
-    setTimeout(() => handlePrint("office"), 500);
-  };
-
   const handleClose = () => {
     setSelectedMethod(null);
     setHasPrinted(false);
-    setAutoPrintDone(false);
     onClose();
   };
 
-  // Show receipt after successful payment
+  // Show receipt after successful payment - NO auto-print, user must click button
   if (completedOrder) {
     return (
       <Dialog open={open} onOpenChange={() => handleClose()}>
@@ -195,10 +178,11 @@ export const CheckoutDialog = ({
                 total={total}
                 paymentMethod={selectedMethod || "cash"}
                 cashierName={cashierName}
+                barName={barName}
               />
             </div>
 
-            {/* Actions */}
+            {/* Actions - Print button only shows once for cashiers/waitstaff */}
             <div className="flex flex-col gap-3">
               {!hasPrinted ? (
                 <Button
@@ -210,7 +194,7 @@ export const CheckoutDialog = ({
                 </Button>
               ) : (
                 <div className="flex gap-3">
-                  {canReprint && (
+                  {canReprint ? (
                     <Button
                       variant="secondary"
                       className="flex-1"
@@ -219,6 +203,10 @@ export const CheckoutDialog = ({
                       <Printer className="h-4 w-4 mr-2" />
                       Reprint
                     </Button>
+                  ) : (
+                    <div className="flex-1 text-center py-2 text-sm text-muted-foreground bg-muted rounded-md">
+                      Receipt printed successfully
+                    </div>
                   )}
                 </div>
               )}

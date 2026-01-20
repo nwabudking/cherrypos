@@ -380,13 +380,15 @@ const TransfersPage = () => {
                   <TableHead>To</TableHead>
                   <TableHead>Item</TableHead>
                   <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead>Transferred By</TableHead>
+                  <TableHead>Received By</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTransfers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       No transfer records found
                     </TableCell>
                   </TableRow>
@@ -411,6 +413,19 @@ const TransfersPage = () => {
                       <TableCell>{transfer.inventory_item?.name || '-'}</TableCell>
                       <TableCell className="text-right">
                         {transfer.quantity} {transfer.inventory_item?.unit}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {transfer.requester?.full_name || transfer.requester?.email || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {transfer.status === 'completed' || transfer.status === 'accepted'
+                            ? (transfer.approver?.full_name || transfer.approver?.email || 
+                               (transfer.requester?.full_name ? `${transfer.requester.full_name} (Auto)` : '-'))
+                            : '-'}
+                        </span>
                       </TableCell>
                       <TableCell>{getStatusBadge(transfer.status)}</TableCell>
                     </TableRow>

@@ -325,7 +325,9 @@ export function useBarToBarTransfers() {
           *,
           source_bar:bars!source_bar_id(id, name),
           destination_bar:bars!destination_bar_id(id, name),
-          inventory_item:inventory_items(id, name, unit)
+          inventory_item:inventory_items(id, name, unit),
+          requester:profiles!requested_by(full_name, email),
+          approver:profiles!approved_by(full_name, email)
         `)
         .order('created_at', { ascending: false })
         .limit(200);

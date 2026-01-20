@@ -116,6 +116,8 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
   const saveMutation = useMutation({
     mutationFn: async () => {
       let inventoryItemId = form.inventory_item_id || null;
+      const costPrice = form.cost_price ? parseFloat(form.cost_price) : null;
+      const sellingPrice = parseFloat(form.price);
 
       // Auto-create inventory item for new menu items (inventory is source of truth)
       if (!editingItem && !inventoryItemId) {
@@ -126,20 +128,30 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
             current_stock: 0,
             min_stock_level: 10,
             unit: "pcs",
-            cost_per_unit: form.cost_price ? parseFloat(form.cost_price) : null,
+            cost_per_unit: costPrice,
+            selling_price: sellingPrice,
           })
           .select("id")
           .single();
 
         if (invError) throw invError;
         inventoryItemId = newInventoryItem.id;
+      } else if (inventoryItemId) {
+        // Sync prices to existing inventory item
+        await supabase
+          .from("inventory_items")
+          .update({
+            cost_per_unit: costPrice,
+            selling_price: sellingPrice,
+          })
+          .eq("id", inventoryItemId);
       }
 
       const payload = {
         name: form.name,
         description: form.description || null,
-        price: parseFloat(form.price),
-        cost_price: form.cost_price ? parseFloat(form.cost_price) : null,
+        price: sellingPrice,
+        cost_price: costPrice,
         category_id: form.category_id || null,
         image_url: form.image_url || null,
         is_available: inventoryItemId ? false : form.is_available, // Start unavailable if tracked
