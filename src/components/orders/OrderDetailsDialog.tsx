@@ -19,9 +19,10 @@ interface OrderDetailsDialogProps {
   order: OrderWithItems | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdateStatus: (status: OrderStatus, reason?: string) => void;
+  onUpdateStatus: (status: OrderStatus, reason?: string, restoreInventory?: boolean) => void;
   isUpdating: boolean;
   userRole?: string;
+  onVoidWithRestore?: (orderId: string, reason: string) => void;
 }
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -91,7 +92,9 @@ export const OrderDetailsDialog = ({
 
   const handleConfirmCancel = () => {
     if (!cancelReason.trim()) return;
-    onUpdateStatus("cancelled", cancelReason);
+    // For completed orders (void), restore inventory
+    const shouldRestoreInventory = order.status === 'completed';
+    onUpdateStatus("cancelled", cancelReason, shouldRestoreInventory);
     setShowCancelReason(false);
     setCancelReason("");
   };

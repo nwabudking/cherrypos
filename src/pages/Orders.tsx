@@ -49,7 +49,7 @@ const Orders = () => {
 
   const updateStatusMutation = useUpdateOrderStatus();
 
-  const handleUpdateStatus = async (orderId: string, status: OrderStatus, reason?: string) => {
+  const handleUpdateStatus = async (orderId: string, status: OrderStatus, reason?: string, restoreInventory?: boolean) => {
     // Create audit log for corrections/cancellations
     if (reason && selectedOrder) {
       try {
@@ -58,7 +58,7 @@ const Orders = () => {
           entity_type: 'order',
           entity_id: orderId,
           original_data: { status: selectedOrder.status, order_number: selectedOrder.order_number },
-          new_data: { status, reason },
+          new_data: { status, reason, inventory_restored: restoreInventory },
           reason,
         });
       } catch (e) {
@@ -67,7 +67,7 @@ const Orders = () => {
     }
 
     updateStatusMutation.mutate(
-      { id: orderId, status },
+      { id: orderId, status, restoreInventory },
       {
         onSuccess: () => {
           setSelectedOrder(null);
@@ -152,8 +152,8 @@ const Orders = () => {
         order={selectedOrder}
         open={!!selectedOrder}
         onOpenChange={(open) => !open && setSelectedOrder(null)}
-        onUpdateStatus={(status, reason) =>
-          selectedOrder && handleUpdateStatus(selectedOrder.id, status, reason)
+        onUpdateStatus={(status, reason, restoreInventory) =>
+          selectedOrder && handleUpdateStatus(selectedOrder.id, status, reason, restoreInventory)
         }
         isUpdating={updateStatusMutation.isPending}
         userRole={role}

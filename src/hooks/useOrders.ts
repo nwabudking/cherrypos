@@ -269,7 +269,71 @@ export function useUpdateOrderStatus() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status, restoreInventory }: { id: string; status: string; restoreInventory?: boolean }) => {
+      // If voiding an order and restoreInventory is true, restore bar inventory
+      if (status === 'cancelled' && restoreInventory) {
+        // Fetch order with items and bar_id
+        const { data: order, error: orderFetchError } = await supabase
+          .from('orders')
+          .select('*, order_items(*, menu_items(inventory_item_id, track_inventory))')
+          .eq('id', id)
+          .single();
+        
+        if (orderFetchError) throw orderFetchError;
+        
+        if (order?.bar_id && order.order_items) {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          // Restore inventory for each item
+          for (const item of order.order_items) {
+            const menuItem = item.menu_items;
+            if (menuItem?.track_inventory && menuItem.inventory_item_id) {
+              // Check if bar_inventory record exists
+              const { data: existingStock } = await supabase
+                .from('bar_inventory')
+                .select('current_stock')
+                .eq('bar_id', order.bar_id)
+                .eq('inventory_item_id', menuItem.inventory_item_id)
+                .maybeSingle();
+              
+              if (existingStock) {
+                // Increment existing stock
+                await supabase
+                  .from('bar_inventory')
+                  .update({ 
+                    current_stock: existingStock.current_stock + item.quantity,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('bar_id', order.bar_id)
+                  .eq('inventory_item_id', menuItem.inventory_item_id);
+              } else {
+                // Create new bar inventory record
+                await supabase
+                  .from('bar_inventory')
+                  .insert({
+                    bar_id: order.bar_id,
+                    inventory_item_id: menuItem.inventory_item_id,
+                    current_stock: item.quantity,
+                    min_stock_level: 5,
+                  });
+              }
+              
+              // Create transfer record for audit
+              await supabase.from('inventory_transfers').insert({
+                source_type: 'void_return',
+                destination_bar_id: order.bar_id,
+                inventory_item_id: menuItem.inventory_item_id,
+                quantity: item.quantity,
+                status: 'completed',
+                notes: `Order Void Return - ${order.order_number}`,
+                transferred_by: user?.id,
+                completed_at: new Date().toISOString(),
+              });
+            }
+          }
+        }
+      }
+      
       const { data, error } = await supabase
         .from('orders')
         .update({ status })
@@ -281,6 +345,8 @@ export function useUpdateOrderStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ordersKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['bars'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
       toast.success('Order status updated');
     },
     onError: (error: Error) => {

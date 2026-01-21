@@ -37,10 +37,13 @@ const roles: { value: AppRole; label: string }[] = [
   { value: "super_admin", label: "Super Admin" },
   { value: "manager", label: "Manager" },
   { value: "cashier", label: "Cashier" },
+  { value: "waitstaff", label: "Waitstaff" },
   { value: "bar_staff", label: "Bar Staff" },
   { value: "kitchen_staff", label: "Kitchen Staff" },
   { value: "inventory_officer", label: "Inventory Officer" },
   { value: "accountant", label: "Accountant" },
+  { value: "store_admin", label: "Store Admin" },
+  { value: "store_user", label: "Store User" },
 ];
 
 export const AddEditStaffDialog = ({

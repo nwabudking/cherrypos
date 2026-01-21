@@ -319,20 +319,42 @@ export function useBarToBarTransfers() {
   return useQuery({
     queryKey: barsKeys.barToBarTransfers(),
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First fetch transfers
+      const { data: transfers, error } = await supabase
         .from('bar_to_bar_transfers')
         .select(`
           *,
           source_bar:bars!source_bar_id(id, name),
           destination_bar:bars!destination_bar_id(id, name),
-          inventory_item:inventory_items(id, name, unit),
-          requester:profiles!requested_by(full_name, email),
-          approver:profiles!approved_by(full_name, email)
+          inventory_item:inventory_items(id, name, unit)
         `)
         .order('created_at', { ascending: false })
         .limit(200);
       if (error) throw error;
-      return data as unknown as BarToBarTransfer[];
+
+      // Collect unique user IDs for requester and approver
+      const userIds = new Set<string>();
+      (transfers || []).forEach((t: any) => {
+        if (t.requested_by) userIds.add(t.requested_by);
+        if (t.approved_by) userIds.add(t.approved_by);
+      });
+
+      // Fetch profiles for these users
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', Array.from(userIds));
+
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+
+      // Attach requester and approver to transfers
+      const enrichedTransfers = (transfers || []).map((t: any) => ({
+        ...t,
+        requester: t.requested_by ? profileMap.get(t.requested_by) || null : null,
+        approver: t.approved_by ? profileMap.get(t.approved_by) || null : null,
+      }));
+
+      return enrichedTransfers as BarToBarTransfer[];
     },
   });
 }

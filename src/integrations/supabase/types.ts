@@ -839,6 +839,14 @@ export type Database = {
         Args: { p_response: string; p_transfer_id: string }
         Returns: Json
       }
+      restore_bar_inventory_on_void: {
+        Args: {
+          p_bar_id: string
+          p_inventory_item_id: string
+          p_quantity: number
+        }
+        Returns: boolean
+      }
       transfer_store_to_bar: {
         Args: {
           p_bar_id: string

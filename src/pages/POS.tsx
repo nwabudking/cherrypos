@@ -67,14 +67,15 @@ const POS = () => {
   
   const createOrderMutation = useCreateOrder();
 
-  // Check if user can reprint (only admins/managers)
+  // Check if user can reprint (only admins/managers can reprint)
   const canReprint = role === "super_admin" || role === "manager";
   
-  // Check if user needs bar assignment (only cashiers need assignment)
+  // Check if user needs bar assignment (cashiers and waitstaff need assignment)
   const isCashier = role === "cashier";
+  const isWaitstaff = role === "waitstaff";
   const isAssignedToBar = !!cashierAssignment;
   const isPrivilegedRole = role === "super_admin" || role === "manager" || role === "bar_staff";
-  const canAccessPOS = !isCashier || isAssignedToBar || isPrivilegedRole;
+  const canAccessPOS = (!isCashier && !isWaitstaff) || isAssignedToBar || isPrivilegedRole;
 
   // Auto-set active bar for cashiers based on their assignment
   useEffect(() => {
@@ -400,8 +401,8 @@ const POS = () => {
           setTableNumber={setTableNumber}
         >
           <div className="flex items-center gap-2">
-            {/* Show bar selector for admins/managers, just display for cashiers */}
-            {isCashier ? (
+            {/* Show bar selector for admins/managers, just display for cashiers/waitstaff */}
+            {isCashier || isWaitstaff ? (
               <CashierBarDisplay />
             ) : (
               <BarSelector />

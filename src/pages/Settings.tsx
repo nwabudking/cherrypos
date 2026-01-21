@@ -52,7 +52,13 @@ interface RestaurantSettingsForm {
   receipt_footer?: string | null;
   receipt_show_logo?: boolean;
   logo_url?: string | null;
+  receipt_width?: string;
 }
+
+const thermalPrinterWidths = [
+  { value: "58mm", label: "58mm (Compact)" },
+  { value: "80mm", label: "80mm (Standard)" },
+];
 
 const timezones = [
   { value: "Africa/Lagos", label: "Lagos (WAT)" },
@@ -424,6 +430,33 @@ const Settings = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="receipt_width">Thermal Printer Width</Label>
+                <Select
+                  value={restaurantForm.receipt_width || "80mm"}
+                  onValueChange={(value) =>
+                    setRestaurantForm({ ...restaurantForm, receipt_width: value })
+                  }
+                  disabled={!canEditSettings}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select printer width" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {thermalPrinterWidths.map((width) => (
+                      <SelectItem key={width.value} value={width.value}>
+                        {width.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Select the width of your thermal receipt printer
+                </p>
+              </div>
+
+              <Separator />
+
               <div className="space-y-2">
                 <Label htmlFor="receipt_footer">Footer Message</Label>
                 <Textarea
