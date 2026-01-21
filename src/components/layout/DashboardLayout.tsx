@@ -5,14 +5,11 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { UserMenu } from '@/components/layout/UserMenu';
 import { Loader2, Cherry } from 'lucide-react';
-import { useSettings } from '@/hooks/useSettings';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
-import cherryLogo from '@/assets/cherry-logo.png';
 
 export const DashboardLayout = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const { data: settings } = useSettings();
   
   // Enable global realtime sync for all pages
   useRealtimeSync();
@@ -40,10 +37,6 @@ export const DashboardLayout = () => {
     return null;
   }
 
-  const logoUrl = settings?.logo_url || cherryLogo;
-  const restaurantName = settings?.name || 'Cherry Dining';
-  const tagline = settings?.tagline || '& Lounge';
-
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -54,25 +47,6 @@ export const DashboardLayout = () => {
           <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 sticky top-0 z-40">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
-              
-              {/* Restaurant Logo & Name in Header */}
-              <div className="hidden md:flex items-center gap-3">
-                <img 
-                  src={logoUrl} 
-                  alt={restaurantName} 
-                  className="w-8 h-8 rounded-lg object-contain"
-                />
-                <div className="flex flex-col">
-                  <span className="font-semibold text-foreground text-sm leading-tight">
-                    {restaurantName}
-                  </span>
-                  {tagline && (
-                    <span className="text-xs text-muted-foreground leading-tight">
-                      {tagline}
-                    </span>
-                  )}
-                </div>
-              </div>
             </div>
             
             <UserMenu />

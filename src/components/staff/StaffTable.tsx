@@ -36,6 +36,7 @@ const roleConfig: Record<string, { label: string; variant: "default" | "secondar
   super_admin: { label: "Super Admin", variant: "destructive" },
   manager: { label: "Manager", variant: "default" },
   cashier: { label: "Cashier", variant: "secondary" },
+  waitstaff: { label: "Waitstaff", variant: "secondary" },
   bar_staff: { label: "Bar Staff", variant: "outline" },
   kitchen_staff: { label: "Kitchen Staff", variant: "outline" },
   inventory_officer: { label: "Inventory Officer", variant: "secondary" },
@@ -103,7 +104,7 @@ export const StaffTable = ({
           {staff.map((member) => {
             const role = member.role ? roleConfig[member.role] : null;
             const isCurrentUser = member.id === currentUserId;
-            const showAssignBar = member.role === "cashier" || member.role === "bar_staff";
+            const showAssignBar = member.role === "cashier" || member.role === "bar_staff" || member.role === "waitstaff";
             
             return (
               <TableRow key={member.id}>

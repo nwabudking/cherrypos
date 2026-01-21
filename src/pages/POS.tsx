@@ -60,32 +60,39 @@ const POS = () => {
 
   const { data: categories = [] } = useActiveMenuCategories();
   const { data: menuItems = [] } = useMenuItemsWithInventory(selectedCategory || undefined);
-  const { data: barStockMap } = useBarInventoryStock(activeBar?.id || null);
   
-  // Check cashier assignment
-  const { data: cashierAssignment, isLoading: isLoadingAssignment } = useCashierAssignment(user?.id || "");
+  // Check cashier assignment - fetch early to determine bar access
+  const { data: cashierAssignment, isLoading: isLoadingAssignment, isFetched: isAssignmentFetched } = useCashierAssignment(user?.id || "");
   
-  const createOrderMutation = useCreateOrder();
-
   // Check if user can reprint (only admins/managers can reprint)
   const canReprint = role === "super_admin" || role === "manager";
   
   // Check if user needs bar assignment (cashiers and waitstaff need assignment)
   const isCashier = role === "cashier";
   const isWaitstaff = role === "waitstaff";
-  const isAssignedToBar = !!cashierAssignment;
+  const needsBarAssignment = isCashier || isWaitstaff;
+  const isAssignedToBar = !!cashierAssignment?.bar_id;
   const isPrivilegedRole = role === "super_admin" || role === "manager" || role === "bar_staff";
-  const canAccessPOS = (!isCashier && !isWaitstaff) || isAssignedToBar || isPrivilegedRole;
+  const canAccessPOS = !needsBarAssignment || isAssignedToBar || isPrivilegedRole;
 
-  // Auto-set active bar for cashiers based on their assignment
+  // Auto-set active bar for cashiers/waitstaff based on their assignment
   useEffect(() => {
-    if (cashierAssignment && cashierAssignment.bar) {
+    if (isAssignmentFetched && cashierAssignment?.bar_id && needsBarAssignment) {
       const assignedBar = bars.find(b => b.id === cashierAssignment.bar_id);
       if (assignedBar && activeBar?.id !== assignedBar.id) {
         setActiveBar(assignedBar);
       }
     }
-  }, [cashierAssignment, bars, activeBar, setActiveBar]);
+  }, [cashierAssignment, bars, activeBar, setActiveBar, needsBarAssignment, isAssignmentFetched]);
+  
+  // Determine the effective bar for stock lookup
+  const effectiveBarId = needsBarAssignment && cashierAssignment?.bar_id 
+    ? cashierAssignment.bar_id 
+    : activeBar?.id || null;
+  
+  const { data: barStockMap } = useBarInventoryStock(effectiveBarId);
+  
+  const createOrderMutation = useCreateOrder();
 
   // Calculate stock info for each menu item
   const stockInfoMap = useMemo(() => {
@@ -141,6 +148,8 @@ const POS = () => {
 
     const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     
+    const barIdToUse = effectiveBarId;
+    
     const orderData: CreateOrderData = {
       order_type: orderType,
       table_number: orderType === "dine_in" ? tableNumber : null,
@@ -150,7 +159,7 @@ const POS = () => {
       service_charge: 0,
       discount_amount: 0,
       total_amount: subtotal,
-      bar_id: activeBar?.id || null,
+      bar_id: barIdToUse,
       items: cart.map((item) => ({
         menu_item_id: item.menuItemId,
         item_name: item.name,
@@ -168,12 +177,13 @@ const POS = () => {
     createOrderMutation.mutate(orderData, {
       onSuccess: async (order) => {
         // Deduct inventory for items that track inventory
-        if (activeBar?.id) {
+        const barIdToUse = effectiveBarId;
+        if (barIdToUse) {
           for (const cartItem of cart) {
             if (cartItem.inventoryItemId) {
               try {
                 await supabase.rpc('deduct_bar_inventory', {
-                  p_bar_id: activeBar.id,
+                  p_bar_id: barIdToUse,
                   p_inventory_item_id: cartItem.inventoryItemId,
                   p_quantity: cartItem.quantity,
                 });
@@ -184,15 +194,12 @@ const POS = () => {
           }
         }
         
-        toast({
-          title: "Order Created!",
-          description: `Order ${order.order_number} has been placed successfully.`,
-        });
+        // Store cart for receipt before clearing
         setCheckoutCart([...cart]);
         setCompletedOrder(order);
         setCart([]);
         setTableNumber("");
-        setIsCheckoutOpen(false);
+        // Keep checkout dialog open to show receipt
         queryClient.invalidateQueries({ queryKey: ["orders"] });
         queryClient.invalidateQueries({ queryKey: ["menu"] });
         queryClient.invalidateQueries({ queryKey: ["inventory"] });
@@ -374,19 +381,19 @@ const POS = () => {
   };
 
   // Show warning if no bar selected and items need tracking
-  const noBarSelected = !activeBar && menuItems.some(m => m.track_inventory);
+  const noBarSelected = !effectiveBarId && menuItems.some(m => m.track_inventory);
 
-  // Show loading while checking assignment
-  if (isLoadingAssignment) {
+  // Show loading while checking assignment for cashiers/waitstaff
+  if (needsBarAssignment && isLoadingAssignment) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">Loading your bar assignment...</div>
       </div>
     );
   }
 
-  // Show restriction if cashier not assigned
-  if (!canAccessPOS) {
+  // Show restriction if cashier/waitstaff not assigned to a bar
+  if (needsBarAssignment && isAssignmentFetched && !isAssignedToBar) {
     return <CashierRestrictionAlert userName={user?.email?.split('@')[0]} />;
   }
 

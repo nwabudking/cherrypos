@@ -156,8 +156,8 @@ export const CheckoutDialog = ({
   // Show receipt after successful payment - NO auto-print, user must click button
   if (completedOrder) {
     return (
-      <Dialog open={open} onOpenChange={() => handleClose()}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <Dialog open={true} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
               <Check className="h-6 w-6 text-emerald-500" />
@@ -192,22 +192,19 @@ export const CheckoutDialog = ({
                   <Printer className="h-4 w-4 mr-2" />
                   Print Receipt (Customer + Office Copy)
                 </Button>
+              ) : canReprint ? (
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={handlePrintBoth}
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Reprint
+                </Button>
               ) : (
-                <div className="flex gap-3">
-                  {canReprint ? (
-                    <Button
-                      variant="secondary"
-                      className="flex-1"
-                      onClick={handlePrintBoth}
-                    >
-                      <Printer className="h-4 w-4 mr-2" />
-                      Reprint
-                    </Button>
-                  ) : (
-                    <div className="flex-1 text-center py-2 text-sm text-muted-foreground bg-muted rounded-md">
-                      Receipt printed successfully
-                    </div>
-                  )}
+                <div className="w-full text-center py-2 text-sm text-muted-foreground bg-muted rounded-md flex items-center justify-center gap-2">
+                  <Check className="h-4 w-4" />
+                  Receipt printed successfully
                 </div>
               )}
               <Button
@@ -215,7 +212,7 @@ export const CheckoutDialog = ({
                 className="w-full"
                 onClick={handleClose}
               >
-                Close
+                {hasPrinted ? "Done" : "Skip Printing & Close"}
               </Button>
             </div>
           </div>
