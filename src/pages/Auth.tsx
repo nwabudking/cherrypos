@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Users } from 'lucide-react';
 import { z } from 'zod';
 import cherryLogo from '@/assets/cherry-logo.png';
 
@@ -162,9 +162,20 @@ const Auth = () => {
             </Button>
           </form>
           
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Contact your administrator if you need an account.
-          </p>
+          <div className="mt-6 text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Contact your administrator if you need an account.
+            </p>
+            <div className="pt-2 border-t border-border/50">
+              <p className="text-sm text-muted-foreground mb-2">Staff member?</p>
+              <Link to="/staff-login">
+                <Button variant="outline" size="sm" className="w-full">
+                  <Users className="mr-2 h-4 w-4" />
+                  Staff Login
+                </Button>
+              </Link>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
