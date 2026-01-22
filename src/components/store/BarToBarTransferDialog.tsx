@@ -35,7 +35,7 @@ export const BarToBarTransferDialog = ({
 }: BarToBarTransferDialogProps) => {
   const queryClient = useQueryClient();
   const { data: bars = [] } = useBars();
-  const { role, barId: assignedBarId } = useEffectiveUser();
+  const { role, barId: assignedBarId, staffUserId } = useEffectiveUser();
   
   const isAdmin = role === "super_admin" || role === "manager" || role === "store_admin";
   const isCashierOrWaiter = role === "cashier" || role === "waitstaff";
@@ -74,6 +74,7 @@ export const BarToBarTransferDialog = ({
         p_quantity: quantity,
         p_notes: notes || null,
         p_admin_complete: isAdmin,
+        p_staff_user_id: staffUserId || null,
       });
 
       if (error) throw error;
@@ -225,7 +226,7 @@ export const BarToBarTransferDialog = ({
             </Button>
             <Button 
               type="submit" 
-              disabled={transferMutation.isPending || !sourceBarId || !destinationBarId || !inventoryItemId || quantity <= 0}
+              disabled={transferMutation.isPending || !effectiveSourceBarId || !destinationBarId || !inventoryItemId || quantity <= 0}
             >
               {transferMutation.isPending ? "Transferring..." : "Transfer"}
             </Button>
