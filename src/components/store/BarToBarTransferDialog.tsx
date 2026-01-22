@@ -35,10 +35,13 @@ export const BarToBarTransferDialog = ({
 }: BarToBarTransferDialogProps) => {
   const queryClient = useQueryClient();
   const { data: bars = [] } = useBars();
-  const { role, barId: assignedBarId, staffUserId } = useEffectiveUser();
+  const { role, barId: assignedBarId, staffUserId, isLocalStaff, userId } = useEffectiveUser();
   
   const isAdmin = role === "super_admin" || role === "manager" || role === "store_admin";
   const isCashierOrWaiter = role === "cashier" || role === "waitstaff";
+  
+  // For local staff, always use staffUserId; for Supabase auth, userId will be used via auth.uid() in the function
+  const effectiveStaffId = isLocalStaff ? staffUserId : null;
   
   const [sourceBarId, setSourceBarId] = useState<string>("");
   const [destinationBarId, setDestinationBarId] = useState<string>("");
@@ -66,25 +69,22 @@ export const BarToBarTransferDialog = ({
         throw new Error("Insufficient stock at source bar");
       }
 
-      // Build RPC params - use type assertion since DB function has new optional param
-      const rpcParams: Record<string, unknown> = {
+      // Build RPC params - always include all parameters to avoid function overload issues
+      const rpcParams = {
         p_source_bar_id: effectiveSourceBarId,
         p_destination_bar_id: destinationBarId,
         p_inventory_item_id: inventoryItemId,
         p_quantity: quantity,
         p_notes: notes || null,
         p_admin_complete: isAdmin,
+        p_staff_user_id: effectiveStaffId || null,
       };
-      
-      // Add staff user ID for local staff authentication
-      if (staffUserId) {
-        rpcParams.p_staff_user_id = staffUserId;
-      }
 
-      const { data, error } = await supabase.rpc(
-        "create_bar_to_bar_transfer" as never,
-        rpcParams as never
-      );
+      console.log("Transfer params:", rpcParams);
+
+      // Use direct supabase call with explicit typing
+      const { data, error } = await supabase
+        .rpc("create_bar_to_bar_transfer", rpcParams as any);
 
       if (error) throw error;
       const result = data as { success?: boolean; message?: string } | null;
