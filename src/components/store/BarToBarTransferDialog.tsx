@@ -69,22 +69,31 @@ export const BarToBarTransferDialog = ({
         throw new Error("Insufficient stock at source bar");
       }
 
-      // Build RPC params - always include all parameters to avoid function overload issues
-      const rpcParams = {
+      // For local staff, require staff user ID
+      if (isLocalStaff && !staffUserId) {
+        throw new Error("Staff session expired. Please log in again.");
+      }
+
+      // Debug: log effective values
+      console.log("Transfer context:", { 
+        isLocalStaff, 
+        staffUserId, 
+        effectiveStaffId,
+        isAdmin 
+      });
+
+      // Call RPC with explicit parameters - ensure p_staff_user_id is passed for local staff
+      const { data, error } = await supabase.rpc("create_bar_to_bar_transfer", {
         p_source_bar_id: effectiveSourceBarId,
         p_destination_bar_id: destinationBarId,
         p_inventory_item_id: inventoryItemId,
         p_quantity: quantity,
         p_notes: notes || null,
         p_admin_complete: isAdmin,
-        p_staff_user_id: effectiveStaffId || null,
-      };
+        p_staff_user_id: isLocalStaff ? staffUserId : null,
+      } as any);
 
-      console.log("Transfer params:", rpcParams);
-
-      // Use direct supabase call with explicit typing
-      const { data, error } = await supabase
-        .rpc("create_bar_to_bar_transfer", rpcParams as any);
+      console.log("Transfer RPC response:", { data, error });
 
       if (error) throw error;
       const result = data as { success?: boolean; message?: string } | null;
