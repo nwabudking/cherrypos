@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useCashierAssignment } from "@/hooks/useCashierAssignment";
+import { useEffectiveUser } from "@/hooks/useEffectiveUser";
 import { useTransferNotifications } from "@/hooks/useTransferNotifications";
 import {
   useBars,
@@ -57,19 +56,13 @@ import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 import { BatchTransferDialog } from "@/components/store/BatchTransferDialog";
 
 const TransfersPage = () => {
-  const { role, user } = useAuth();
-  const assignmentQuery = useCashierAssignment(user?.id || "");
-  const assignment = assignmentQuery.data;
+  const { userId, role, isAdmin, isCashier, isWaitstaff, barId: assignedBarId, barName: assignedBarName, assignmentLoading } = useEffectiveUser();
   
-  const isAdmin = role === "super_admin" || role === "manager" || role === "store_admin";
-  const isCashier = role === "cashier";
-  const assignedBarId = assignment?.bar_id;
-
-  // Enable transfer notifications for cashiers
+  // Enable transfer notifications for cashiers/waitstaff
   useTransferNotifications({
-    enabled: isCashier && !!assignedBarId,
+    enabled: (isCashier || isWaitstaff) && !!assignedBarId,
     soundEnabled: true,
-    userId: user?.id,
+    userId: userId,
   });
 
   const { data: bars = [] } = useBars();
@@ -84,9 +77,10 @@ const TransfersPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   
-  // For cashiers: show inventory from their assigned bar (sender)
+  // For cashiers/waitstaff: show inventory from their assigned bar (sender)
   // For admins: show inventory from selected source bar
-  const effectiveSourceBarId = isCashier ? (assignedBarId || "") : sourceBarId;
+  const isStaffRole = isCashier || isWaitstaff;
+  const effectiveSourceBarId = isStaffRole ? (assignedBarId || "") : sourceBarId;
   const { data: sourceInventory = [] } = useBarInventory(effectiveSourceBarId);
   const selectedItem = sourceInventory.find(i => i.inventory_item_id === inventoryItemId);
   
@@ -96,17 +90,17 @@ const TransfersPage = () => {
   const activeBars = bars.filter(b => b.is_active);
 
   // Filter transfers based on user role
-  const filteredTransfers = isCashier && assignedBarId
+  const filteredTransfers = isStaffRole && assignedBarId
     ? allTransfers.filter(t => t.source_bar_id === assignedBarId || t.destination_bar_id === assignedBarId)
     : allTransfers;
 
-  // Get incoming transfer requests for cashiers (where they are destination)
-  const incomingRequests = isCashier && assignedBarId
+  // Get incoming transfer requests for staff (where they are destination)
+  const incomingRequests = isStaffRole && assignedBarId
     ? pendingTransfers.filter(t => t.destination_bar_id === assignedBarId)
     : [];
 
   const handleOpenTransferDialog = () => {
-    if (isCashier && assignedBarId) {
+    if (isStaffRole && assignedBarId) {
       setSourceBarId(assignedBarId);
     } else {
       setSourceBarId("");
@@ -121,7 +115,7 @@ const TransfersPage = () => {
   const handleCreateTransfer = () => {
     if (!inventoryItemId || !destinationBarId || quantity <= 0) return;
     
-    const effectiveSrcBarId = isCashier ? assignedBarId! : sourceBarId;
+    const effectiveSrcBarId = isStaffRole ? assignedBarId! : sourceBarId;
     
     // Validate quantity against available stock
     if (selectedItem && quantity > selectedItem.current_stock) {
@@ -213,8 +207,8 @@ const TransfersPage = () => {
     ]);
   };
 
-  // Show no bar assignment message for cashiers without a bar
-  if (isCashier && !assignedBarId && !assignmentQuery.isLoading) {
+  // Show no bar assignment message for staff without a bar
+  if (isStaffRole && !assignedBarId && !assignmentLoading) {
     return (
       <div className="p-6">
         <Card>
@@ -229,8 +223,6 @@ const TransfersPage = () => {
       </div>
     );
   }
-
-  const assignedBarName = bars.find(b => b.id === assignedBarId)?.name;
 
   return (
     <div className="space-y-6 p-4 md:p-6">

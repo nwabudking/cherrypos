@@ -909,6 +909,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      staff_change_own_password: {
+        Args: {
+          p_current_password: string
+          p_new_password: string
+          p_staff_id: string
+        }
+        Returns: boolean
+      }
       staff_has_role: {
         Args: {
           p_role: Database["public"]["Enums"]["app_role"]

@@ -1,5 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
-import { useCashierAssignment } from "@/hooks/useCashierAssignment";
+import { useEffectiveUser } from "@/hooks/useEffectiveUser";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,15 +29,13 @@ interface BarInventoryItem {
 }
 
 export const CashierInventoryView = () => {
-  const { user } = useAuth();
+  const { barId: assignedBarId, barName: assignedBarName, assignmentLoading } = useEffectiveUser();
   const [searchQuery, setSearchQuery] = useState("");
-  
-  const { data: assignment } = useCashierAssignment(user?.id || "");
 
   const { data: barInventory = [], isLoading } = useQuery({
-    queryKey: ["cashier-bar-inventory", assignment?.bar_id],
+    queryKey: ["cashier-bar-inventory", assignedBarId],
     queryFn: async () => {
-      if (!assignment?.bar_id) return [];
+      if (!assignedBarId) return [];
       
       const { data, error } = await supabase
         .from("bar_inventory")
@@ -49,13 +46,13 @@ export const CashierInventoryView = () => {
           min_stock_level,
           inventory_items(name, unit, category)
         `)
-        .eq("bar_id", assignment.bar_id)
+        .eq("bar_id", assignedBarId)
         .eq("is_active", true);
 
       if (error) throw error;
       return (data || []) as BarInventoryItem[];
     },
-    enabled: !!assignment?.bar_id,
+    enabled: !!assignedBarId,
   });
 
   const filteredItems = barInventory.filter((item) =>
@@ -66,7 +63,7 @@ export const CashierInventoryView = () => {
     (item) => item.current_stock <= item.min_stock_level
   ).length;
 
-  if (!assignment) {
+  if (!assignedBarId && !assignmentLoading) {
     return (
       <Card className="border-amber-500/50 bg-amber-500/5">
         <CardContent className="py-8 text-center">
@@ -91,7 +88,7 @@ export const CashierInventoryView = () => {
             <h1 className="text-2xl font-bold">Bar Inventory</h1>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Store className="h-4 w-4" />
-              <span>{assignment.bar?.name || "Your Bar"}</span>
+              <span>{assignedBarName || "Your Bar"}</span>
             </div>
           </div>
         </div>
