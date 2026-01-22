@@ -856,30 +856,18 @@ export type Database = {
         }
         Returns: boolean
       }
-      create_bar_to_bar_transfer:
-        | {
-            Args: {
-              p_admin_complete?: boolean
-              p_destination_bar_id: string
-              p_inventory_item_id: string
-              p_notes?: string
-              p_quantity: number
-              p_source_bar_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_admin_complete?: boolean
-              p_destination_bar_id: string
-              p_inventory_item_id: string
-              p_notes?: string
-              p_quantity: number
-              p_source_bar_id: string
-              p_staff_user_id?: string
-            }
-            Returns: Json
-          }
+      create_bar_to_bar_transfer: {
+        Args: {
+          p_admin_complete?: boolean
+          p_destination_bar_id: string
+          p_inventory_item_id: string
+          p_notes?: string
+          p_quantity: number
+          p_source_bar_id: string
+          p_staff_user_id?: string
+        }
+        Returns: Json
+      }
       create_staff_user: {
         Args: {
           p_email?: string
@@ -910,16 +898,14 @@ export type Database = {
         }
         Returns: boolean
       }
-      respond_bar_to_bar_transfer:
-        | { Args: { p_response: string; p_transfer_id: string }; Returns: Json }
-        | {
-            Args: {
-              p_response: string
-              p_staff_user_id?: string
-              p_transfer_id: string
-            }
-            Returns: Json
-          }
+      respond_bar_to_bar_transfer: {
+        Args: {
+          p_response: string
+          p_staff_user_id?: string
+          p_transfer_id: string
+        }
+        Returns: Json
+      }
       restore_bar_inventory_on_void: {
         Args: {
           p_bar_id: string
