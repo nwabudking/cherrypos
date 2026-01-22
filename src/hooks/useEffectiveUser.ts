@@ -43,5 +43,7 @@ export function useEffectiveUser() {
     assignmentLoading,
     barId: assignment?.bar_id,
     barName: assignment?.bar?.name,
+    // Expose staff user ID separately for RPC calls that need it
+    staffUserId: isLocalStaff ? staffUser?.id : undefined,
   };
 }
