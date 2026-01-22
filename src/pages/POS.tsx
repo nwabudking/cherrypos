@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useBarContext } from "@/contexts/BarContext";
 import { useToast } from "@/hooks/use-toast";
 import { useActiveMenuCategories } from "@/hooks/useMenu";
@@ -43,10 +44,17 @@ interface CompletedOrder {
 }
 
 const POS = () => {
-  const { user, role } = useAuth();
+  const { user, role: authRole } = useAuth();
+  const { staffUser, isStaffAuthenticated } = useStaffAuth();
   const { activeBar, setActiveBar, bars } = useBarContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Determine effective user and role
+  const effectiveUserId = isStaffAuthenticated ? staffUser?.id : user?.id;
+  const effectiveRole = isStaffAuthenticated ? staffUser?.role : authRole;
+  const effectiveUserName = isStaffAuthenticated ? staffUser?.full_name : user?.email;
+  const isLocalStaffUser = isStaffAuthenticated && !!staffUser;
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,18 +69,21 @@ const POS = () => {
   const { data: categories = [] } = useActiveMenuCategories();
   const { data: menuItems = [] } = useMenuItemsWithInventory(selectedCategory || undefined);
   
-  // Check cashier assignment - fetch early to determine bar access
-  const { data: cashierAssignment, isLoading: isLoadingAssignment, isFetched: isAssignmentFetched } = useCashierAssignment(user?.id || "");
+  // Check cashier assignment - works for both auth users and staff users
+  const { data: cashierAssignment, isLoading: isLoadingAssignment, isFetched: isAssignmentFetched } = useCashierAssignment(
+    effectiveUserId || "", 
+    isLocalStaffUser
+  );
   
   // Check if user can reprint (only admins/managers can reprint)
-  const canReprint = role === "super_admin" || role === "manager";
+  const canReprint = effectiveRole === "super_admin" || effectiveRole === "manager";
   
   // Check if user needs bar assignment (cashiers and waitstaff need assignment)
-  const isCashier = role === "cashier";
-  const isWaitstaff = role === "waitstaff";
+  const isCashier = effectiveRole === "cashier";
+  const isWaitstaff = effectiveRole === "waitstaff";
   const needsBarAssignment = isCashier || isWaitstaff;
   const isAssignedToBar = !!cashierAssignment?.bar_id;
-  const isPrivilegedRole = role === "super_admin" || role === "manager" || role === "bar_staff";
+  const isPrivilegedRole = effectiveRole === "super_admin" || effectiveRole === "manager" || effectiveRole === "bar_staff";
   const canAccessPOS = !needsBarAssignment || isAssignedToBar || isPrivilegedRole;
 
   // Auto-set active bar for cashiers/waitstaff based on their assignment

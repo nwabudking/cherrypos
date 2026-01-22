@@ -36,17 +36,26 @@ export function useCashierAssignments() {
 
       if (error) throw error;
       
-      // Fetch profiles separately
-      const userIds = assignments.map(a => a.user_id);
+      // Fetch profiles for auth users
+      const userIds = assignments.map(a => a.user_id).filter(Boolean);
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, full_name, email')
         .in('id', userIds);
       
-      // Combine assignments with profiles
+      // Fetch staff users for local staff
+      const staffUserIds = assignments.map(a => a.staff_user_id).filter(Boolean);
+      const { data: staffUsers } = await supabase
+        .from('staff_users')
+        .select('id, full_name, email')
+        .in('id', staffUserIds);
+      
+      // Combine assignments with profiles or staff users
       const result = assignments.map(a => ({
         ...a,
-        profile: profiles?.find(p => p.id === a.user_id) || undefined,
+        profile: profiles?.find(p => p.id === a.user_id) || 
+                 staffUsers?.find(s => s.id === a.staff_user_id) || 
+                 undefined,
       }));
       
       return result as CashierBarAssignment[];
@@ -54,19 +63,27 @@ export function useCashierAssignments() {
   });
 }
 
-export function useCashierAssignment(userId: string) {
+// Hook that works for both auth users and staff users
+export function useCashierAssignment(userId: string, isStaffUser: boolean = false) {
   return useQuery({
-    queryKey: cashierAssignmentKeys.byUser(userId),
+    queryKey: [...cashierAssignmentKeys.byUser(userId), isStaffUser ? 'staff' : 'auth'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('cashier_bar_assignments')
         .select(`
           *,
           bar:bars(id, name)
         `)
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .maybeSingle();
+        .eq('is_active', true);
+      
+      // Check both user_id and staff_user_id
+      if (isStaffUser) {
+        query = query.eq('staff_user_id', userId);
+      } else {
+        query = query.eq('user_id', userId);
+      }
+      
+      const { data, error } = await query.maybeSingle();
 
       if (error) throw error;
       return data as CashierBarAssignment | null;
@@ -79,25 +96,41 @@ export function useAssignCashierToBar() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ userId, barId }: { userId: string; barId: string }) => {
-      // Deactivate existing assignments
-      await supabase
-        .from('cashier_bar_assignments')
-        .update({ is_active: false })
-        .eq('user_id', userId);
+    mutationFn: async ({ userId, barId, isStaffUser = false }: { userId: string; barId: string; isStaffUser?: boolean }) => {
+      // Deactivate existing assignments for this user
+      if (isStaffUser) {
+        await supabase
+          .from('cashier_bar_assignments')
+          .update({ is_active: false })
+          .eq('staff_user_id', userId);
+      } else {
+        await supabase
+          .from('cashier_bar_assignments')
+          .update({ is_active: false })
+          .eq('user_id', userId);
+      }
 
-      // Get current user
+      // Get current auth user for assigned_by
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Create new assignment
+      // Create new assignment with appropriate field
+      const assignmentData: any = {
+        bar_id: barId,
+        assigned_by: user?.id,
+        is_active: true,
+      };
+      
+      if (isStaffUser) {
+        assignmentData.staff_user_id = userId;
+        // Use a placeholder UUID for user_id since it's required
+        assignmentData.user_id = userId;
+      } else {
+        assignmentData.user_id = userId;
+      }
+
       const { data, error } = await supabase
         .from('cashier_bar_assignments')
-        .upsert({
-          user_id: userId,
-          bar_id: barId,
-          assigned_by: user?.id,
-          is_active: true,
-        }, { onConflict: 'user_id,bar_id' })
+        .insert(assignmentData)
         .select()
         .single();
 
@@ -106,10 +139,10 @@ export function useAssignCashierToBar() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cashierAssignmentKeys.all });
-      toast.success('Cashier assigned to bar successfully');
+      toast.success('Staff assigned to bar successfully');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to assign cashier');
+      toast.error(error.message || 'Failed to assign staff');
     },
   });
 }

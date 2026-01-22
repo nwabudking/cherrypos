@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 interface CashierAssignmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  staffMember: { id: string; full_name: string | null; role: string | null } | null;
+  staffMember: { id: string; full_name: string | null; role: string | null; isStaffUser?: boolean } | null;
 }
 
 export const CashierAssignmentDialog = ({
@@ -35,7 +35,9 @@ export const CashierAssignmentDialog = ({
   const [selectedBarId, setSelectedBarId] = useState<string>("");
   
   const { data: bars = [] } = useBars();
-  const { data: currentAssignment } = useCashierAssignment(staffMember?.id || "");
+  // For staff users, pass isStaffUser=true
+  const isStaffUser = staffMember?.isStaffUser ?? true; // Default to staff user for local auth
+  const { data: currentAssignment } = useCashierAssignment(staffMember?.id || "", isStaffUser);
   const assignMutation = useAssignCashierToBar();
 
   const activeBars = bars.filter(bar => bar.is_active);
@@ -52,7 +54,7 @@ export const CashierAssignmentDialog = ({
     if (!staffMember || !selectedBarId) return;
     
     assignMutation.mutate(
-      { userId: staffMember.id, barId: selectedBarId },
+      { userId: staffMember.id, barId: selectedBarId, isStaffUser },
       {
         onSuccess: () => {
           onOpenChange(false);
@@ -61,7 +63,7 @@ export const CashierAssignmentDialog = ({
     );
   };
 
-  const isCashierOrBarStaff = staffMember?.role === "cashier" || staffMember?.role === "bar_staff";
+  const isCashierOrBarStaff = staffMember?.role === "cashier" || staffMember?.role === "bar_staff" || staffMember?.role === "waitstaff";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

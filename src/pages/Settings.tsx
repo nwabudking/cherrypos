@@ -507,9 +507,9 @@ const Settings = () => {
                     orderType="dine_in"
                     tableNumber="T5"
                     items={[
-                      { id: "1", menuItemId: "m1", name: "Grilled Chicken", price: 4500, quantity: 2 },
-                      { id: "2", menuItemId: "m2", name: "Jollof Rice", price: 2500, quantity: 2 },
-                      { id: "3", menuItemId: "m3", name: "Chapman", price: 1500, quantity: 3, notes: "Less sugar" },
+                      { id: "1", name: "Grilled Chicken", price: 4500, quantity: 2 },
+                      { id: "2", name: "Jollof Rice", price: 2500, quantity: 2 },
+                      { id: "3", name: "Chapman", price: 1500, quantity: 3, notes: "Less sugar" },
                     ]}
                     subtotal={18500}
                     total={18500}

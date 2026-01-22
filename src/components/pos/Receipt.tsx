@@ -1,8 +1,15 @@
 import { forwardRef } from "react";
 import { format } from "date-fns";
-import type { CartItem } from "@/pages/POS";
 import { useSettings } from "@/hooks/useSettings";
 import cherryLogo from "@/assets/cherry-logo.png";
+
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  notes?: string;
+}
 
 interface ReceiptProps {
   orderNumber: string;
@@ -21,7 +28,7 @@ const orderTypeLabels: Record<string, string> = {
   dine_in: "Dine In",
   takeaway: "Takeaway",
   delivery: "Delivery",
-  bar_only: "Bar Only",
+  bar_only: "Bar Order",
 };
 
 const paymentLabels: Record<string, string> = {
@@ -132,7 +139,7 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           )}
           {barName && (
             <div className="flex justify-between">
-              <span>Bar:</span>
+              <span>Served from:</span>
               <span className="font-bold">{barName}</span>
             </div>
           )}

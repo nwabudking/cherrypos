@@ -43,9 +43,9 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, roles: ['super_admin', 'manager', 'cashier', 'bar_staff', 'kitchen_staff', 'inventory_officer', 'accountant', 'store_user', 'store_admin'] },
   { title: 'POS', url: '/pos', icon: ShoppingCart, roles: ['super_admin', 'manager', 'cashier', 'waitstaff'] },
-  { title: 'Orders', url: '/orders', icon: ClipboardList },
+  { title: 'Orders', url: '/orders', icon: ClipboardList, roles: ['super_admin', 'manager', 'cashier', 'bar_staff', 'kitchen_staff'] },
   { title: 'Order History', url: '/order-history', icon: History, roles: ['super_admin', 'manager', 'cashier'] },
   { title: 'EOD Report', url: '/eod-report', icon: FileText, roles: ['super_admin', 'manager', 'cashier'] },
 ];

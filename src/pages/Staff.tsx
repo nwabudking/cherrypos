@@ -249,7 +249,7 @@ const Staff = () => {
       <CashierAssignmentDialog
         open={isAssignmentDialogOpen}
         onOpenChange={setIsAssignmentDialogOpen}
-        staffMember={selectedStaff}
+        staffMember={selectedStaff ? { ...selectedStaff, isStaffUser: true } : null}
       />
 
       <ResetPasswordDialog

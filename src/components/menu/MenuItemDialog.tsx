@@ -121,39 +121,55 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
 
       // Auto-create inventory item for new menu items (inventory is source of truth)
       if (!editingItem && !inventoryItemId) {
-        const { data: newInventoryItem, error: invError } = await supabase
+        // Check if inventory item with same name exists first
+        const { data: existingInv } = await supabase
           .from("inventory_items")
-          .insert({
-            name: form.name,
-            current_stock: 0,
-            min_stock_level: 10,
-            unit: "pcs",
-            cost_per_unit: costPrice,
-            selling_price: sellingPrice,
-          })
           .select("id")
-          .single();
-
-        // If pooler connection fails, still try to save menu item without inventory link
-        if (invError) {
-          console.warn("Failed to create inventory item:", invError.message);
-          // Continue without inventory item link
+          .eq("name", form.name)
+          .maybeSingle();
+        
+        if (existingInv) {
+          // Use existing inventory item
+          inventoryItemId = existingInv.id;
+          // Update its prices
+          await supabase
+            .from("inventory_items")
+            .update({
+              cost_per_unit: costPrice,
+              selling_price: sellingPrice,
+            })
+            .eq("id", existingInv.id);
         } else {
-          inventoryItemId = newInventoryItem.id;
+          const { data: newInventoryItem, error: invError } = await supabase
+            .from("inventory_items")
+            .insert({
+              name: form.name,
+              current_stock: 0,
+              min_stock_level: 10,
+              unit: "pcs",
+              cost_per_unit: costPrice,
+              selling_price: sellingPrice,
+            })
+            .select("id")
+            .single();
+
+          // If pooler connection fails, still try to save menu item without inventory link
+          if (invError) {
+            console.warn("Failed to create inventory item:", invError.message);
+            // Continue without inventory item link
+          } else {
+            inventoryItemId = newInventoryItem.id;
+          }
         }
       } else if (inventoryItemId) {
         // Sync prices to existing inventory item - don't throw on failure
-        const { error: updateError } = await supabase
+        await supabase
           .from("inventory_items")
           .update({
             cost_per_unit: costPrice,
             selling_price: sellingPrice,
           })
           .eq("id", inventoryItemId);
-        
-        if (updateError) {
-          console.warn("Failed to sync inventory prices:", updateError.message);
-        }
       }
 
       const payload = {
@@ -176,12 +192,28 @@ export const MenuItemDialog = ({ open, onOpenChange, editingItem }: MenuItemDial
           .eq("id", editingItem.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("menu_items").insert(payload);
-        if (error) throw error;
+        // Check if menu item with same name exists
+        const { data: existingMenu } = await supabase
+          .from("menu_items")
+          .select("id")
+          .eq("name", form.name)
+          .maybeSingle();
+        
+        if (existingMenu) {
+          // Update existing menu item instead
+          const { error } = await supabase
+            .from("menu_items")
+            .update(payload)
+            .eq("id", existingMenu.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("menu_items").insert(payload);
+          if (error) throw error;
+        }
       }
     },
     onSuccess: () => {
-      toast({ title: editingItem ? "Item updated successfully" : "Item created successfully" });
+      toast({ title: editingItem ? "Item updated successfully" : "Item saved successfully" });
       queryClient.invalidateQueries({ queryKey: ["menu-items-all"] });
       queryClient.invalidateQueries({ queryKey: ["menu-items"] });
       queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
