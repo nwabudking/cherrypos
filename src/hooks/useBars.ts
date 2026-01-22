@@ -339,19 +339,38 @@ export function useBarToBarTransfers() {
         if (t.approved_by) userIds.add(t.approved_by);
       });
 
-      // Fetch profiles for these users
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', Array.from(userIds));
+      const userIdArray = Array.from(userIds);
+      
+      // Fetch profiles for Supabase auth users
+      const { data: profiles } = userIdArray.length > 0
+        ? await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', userIdArray)
+        : { data: [] };
 
-      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+      // Fetch staff_users for local staff
+      const { data: staffUsers } = userIdArray.length > 0
+        ? await supabase
+            .from('staff_users')
+            .select('id, full_name, email')
+            .in('id', userIdArray)
+        : { data: [] };
+
+      // Merge profiles and staff users into a lookup map
+      const userMap = new Map<string, { full_name: string | null; email: string | null }>();
+      (profiles || []).forEach(p => userMap.set(p.id, { full_name: p.full_name, email: p.email }));
+      (staffUsers || []).forEach(s => {
+        if (!userMap.has(s.id)) {
+          userMap.set(s.id, { full_name: s.full_name, email: s.email });
+        }
+      });
 
       // Attach requester and approver to transfers
       const enrichedTransfers = (transfers || []).map((t: any) => ({
         ...t,
-        requester: t.requested_by ? profileMap.get(t.requested_by) || null : null,
-        approver: t.approved_by ? profileMap.get(t.approved_by) || null : null,
+        requester: t.requested_by ? userMap.get(t.requested_by) || null : null,
+        approver: t.approved_by ? userMap.get(t.approved_by) || null : null,
       }));
 
       return enrichedTransfers as BarToBarTransfer[];

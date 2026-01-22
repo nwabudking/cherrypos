@@ -175,6 +175,12 @@ const TransfersPage = () => {
             <XCircle className="h-3 w-3 mr-1" />Rejected
           </Badge>
         );
+      case 'expired':
+        return (
+          <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-300">
+            <Clock className="h-3 w-3 mr-1" />Expired
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
