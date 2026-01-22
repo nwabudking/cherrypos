@@ -2,6 +2,8 @@ import { useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { useStaffAuth } from '@/contexts/StaffAuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
+import { usePendingTransferCount } from '@/hooks/usePendingTransferCount';
 import {
   Sidebar,
   SidebarContent,
@@ -14,6 +16,7 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from '@/components/ui/sidebar';
+import { Badge } from '@/components/ui/badge';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -77,6 +80,12 @@ export const AppSidebar = () => {
   const { role: authRole } = useAuth();
   const { staffUser, isStaffAuthenticated } = useStaffAuth();
   const location = useLocation();
+  
+  // Get effective user info for pending transfer count
+  const { barId: assignedBarId, isCashier, isWaitstaff } = useEffectiveUser();
+  const pendingTransferCount = usePendingTransferCount(
+    (isCashier || isWaitstaff) ? assignedBarId : null
+  );
 
   // Use staff role if staff authenticated, otherwise use Supabase auth role
   const effectiveRole = isStaffAuthenticated ? staffUser?.role : authRole;
@@ -93,20 +102,32 @@ export const AppSidebar = () => {
 
   const renderNavItems = (items: NavItem[]) => {
     const filteredItems = filterByRole(items);
-    return filteredItems.map((item) => (
-      <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton asChild isActive={isActive(item.url)}>
-          <NavLink
-            to={item.url}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors hover:bg-sidebar-accent"
-            activeClassName="bg-primary/10 text-primary border-l-2 border-primary"
-          >
-            <item.icon className="w-5 h-5" />
-            <span>{item.title}</span>
-          </NavLink>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    ));
+    return filteredItems.map((item) => {
+      const showBadge = item.url === '/transfers' && pendingTransferCount > 0 && (isCashier || isWaitstaff);
+      
+      return (
+        <SidebarMenuItem key={item.title}>
+          <SidebarMenuButton asChild isActive={isActive(item.url)}>
+            <NavLink
+              to={item.url}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors hover:bg-sidebar-accent"
+              activeClassName="bg-primary/10 text-primary border-l-2 border-primary"
+            >
+              <item.icon className="w-5 h-5" />
+              <span className="flex-1">{item.title}</span>
+              {showBadge && (
+                <Badge 
+                  variant="destructive" 
+                  className="h-5 min-w-[20px] px-1.5 text-xs font-bold animate-pulse"
+                >
+                  {pendingTransferCount}
+                </Badge>
+              )}
+            </NavLink>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      );
+    });
   };
 
   return (
