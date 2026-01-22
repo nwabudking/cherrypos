@@ -392,6 +392,7 @@ export function useCreateBarToBarTransfer() {
         quantity,
         notes,
         isAdminTransfer,
+        staffUserId,
       }: {
         sourceBarId: string;
         destinationBarId: string;
@@ -399,6 +400,7 @@ export function useCreateBarToBarTransfer() {
         quantity: number;
         notes?: string;
         isAdminTransfer?: boolean;
+        staffUserId?: string;
       }) => {
         // IMPORTANT: Do inventory updates server-side (RPC) so cashiers don't need UPDATE permission on bar_inventory
         const { data, error } = await supabase.rpc('create_bar_to_bar_transfer', {
@@ -408,7 +410,8 @@ export function useCreateBarToBarTransfer() {
           p_quantity: quantity,
           p_notes: notes ?? null,
           p_admin_complete: !!isAdminTransfer,
-        });
+          p_staff_user_id: staffUserId ?? null,
+        } as any);
 
         if (error) throw error;
         return data as unknown as {
@@ -446,15 +449,18 @@ export function useRespondToTransfer() {
     mutationFn: async ({
       transferId,
       response,
+      staffUserId,
     }: {
       transferId: string;
       response: 'accepted' | 'rejected';
+      staffUserId?: string;
     }) => {
       // IMPORTANT: perform inventory updates server-side (RPC)
       const { data, error } = await supabase.rpc('respond_bar_to_bar_transfer', {
         p_transfer_id: transferId,
         p_response: response,
-      });
+        p_staff_user_id: staffUserId ?? null,
+      } as any);
 
       if (error) throw error;
       return data as unknown as {

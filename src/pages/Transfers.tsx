@@ -56,7 +56,7 @@ import { exportToPDF, exportToExcel } from "@/lib/exportUtils";
 import { BatchTransferDialog } from "@/components/store/BatchTransferDialog";
 
 const TransfersPage = () => {
-  const { userId, role, isAdmin, isCashier, isWaitstaff, barId: assignedBarId, barName: assignedBarName, assignmentLoading } = useEffectiveUser();
+  const { userId, role, isAdmin, isCashier, isWaitstaff, barId: assignedBarId, barName: assignedBarName, assignmentLoading, staffUserId, isLocalStaff } = useEffectiveUser();
   
   // Enable transfer notifications for cashiers/waitstaff
   useTransferNotifications({
@@ -129,6 +129,7 @@ const TransfersPage = () => {
       quantity,
       notes: notes || undefined,
       isAdminTransfer: isAdmin,
+      staffUserId: isLocalStaff ? staffUserId : undefined,
     }, {
       onSuccess: () => {
         setTransferDialogOpen(false);
@@ -141,7 +142,11 @@ const TransfersPage = () => {
   };
 
   const handleRespondToTransfer = (transferId: string, response: 'accepted' | 'rejected') => {
-    respondMutation.mutate({ transferId, response }, {
+    respondMutation.mutate({ 
+      transferId, 
+      response,
+      staffUserId: isLocalStaff ? staffUserId : undefined,
+    }, {
       onSuccess: () => {
         refetchPending();
         refetchTransfers();
