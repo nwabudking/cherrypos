@@ -66,16 +66,25 @@ export const BarToBarTransferDialog = ({
         throw new Error("Insufficient stock at source bar");
       }
 
-      // Use RPC function for transfers - works for both auth users and staff
-      const { data, error } = await supabase.rpc("create_bar_to_bar_transfer", {
+      // Build RPC params - use type assertion since DB function has new optional param
+      const rpcParams: Record<string, unknown> = {
         p_source_bar_id: effectiveSourceBarId,
         p_destination_bar_id: destinationBarId,
         p_inventory_item_id: inventoryItemId,
         p_quantity: quantity,
         p_notes: notes || null,
         p_admin_complete: isAdmin,
-        p_staff_user_id: staffUserId || null,
-      });
+      };
+      
+      // Add staff user ID for local staff authentication
+      if (staffUserId) {
+        rpcParams.p_staff_user_id = staffUserId;
+      }
+
+      const { data, error } = await supabase.rpc(
+        "create_bar_to_bar_transfer" as never,
+        rpcParams as never
+      );
 
       if (error) throw error;
       const result = data as { success?: boolean; message?: string } | null;
