@@ -264,8 +264,8 @@ const TransfersPage = () => {
         </div>
       </div>
 
-      {/* Cashier Info Banner */}
-      {isCashier && assignedBarId && (
+      {/* Staff Info Banner */}
+      {(isCashier || isWaitstaff) && assignedBarId && (
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -282,8 +282,8 @@ const TransfersPage = () => {
         </Card>
       )}
 
-      {/* Incoming Transfer Requests (for cashiers to accept/reject) */}
-      {isCashier && incomingRequests.length > 0 && (
+      {/* Incoming Transfer Requests (for cashiers/waitstaff to accept/reject) */}
+      {(isCashier || isWaitstaff) && incomingRequests.length > 0 && (
         <Card className="border-amber-500 border-2">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
