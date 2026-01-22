@@ -207,7 +207,7 @@ export type Database = {
           is_active: boolean | null
           staff_user_id: string | null
           updated_at: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           assigned_by?: string | null
@@ -217,7 +217,7 @@ export type Database = {
           is_active?: boolean | null
           staff_user_id?: string | null
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           assigned_by?: string | null
@@ -227,7 +227,7 @@ export type Database = {
           is_active?: boolean | null
           staff_user_id?: string | null
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 export interface CashierBarAssignment {
   id: string;
   user_id: string;
+  staff_user_id?: string | null;
   bar_id: string;
   assigned_by: string | null;
   is_active: boolean;
@@ -122,8 +123,8 @@ export function useAssignCashierToBar() {
       
       if (isStaffUser) {
         assignmentData.staff_user_id = userId;
-        // Use a placeholder UUID for user_id since it's required
-        assignmentData.user_id = userId;
+        // user_id is for authenticated users; keep it null for local staff to avoid auth.users FK violations
+        assignmentData.user_id = null;
       } else {
         assignmentData.user_id = userId;
       }
@@ -151,11 +152,14 @@ export function useUnassignCashier() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await supabase
+    mutationFn: async ({ userId, isStaffUser = false }: { userId: string; isStaffUser?: boolean }) => {
+      let q = supabase
         .from('cashier_bar_assignments')
-        .update({ is_active: false })
-        .eq('user_id', userId);
+        .update({ is_active: false });
+
+      q = isStaffUser ? q.eq('staff_user_id', userId) : q.eq('user_id', userId);
+
+      const { error } = await q;
 
       if (error) throw error;
     },
