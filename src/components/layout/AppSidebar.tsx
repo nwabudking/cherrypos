@@ -43,17 +43,17 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, roles: ['super_admin', 'manager', 'cashier', 'bar_staff', 'kitchen_staff', 'inventory_officer', 'accountant', 'store_user', 'store_admin'] },
-  { title: 'POS', url: '/pos', icon: ShoppingCart, roles: ['super_admin', 'manager', 'cashier', 'waitstaff'] },
-  { title: 'Orders', url: '/orders', icon: ClipboardList, roles: ['super_admin', 'manager', 'cashier', 'bar_staff', 'kitchen_staff'] },
-  { title: 'Order History', url: '/order-history', icon: History, roles: ['super_admin', 'manager', 'cashier'] },
+  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, roles: ['super_admin', 'manager', 'cashier', 'bar_staff', 'kitchen_staff', 'inventory_officer', 'accountant', 'store_user', 'store_admin', 'waitstaff'] },
+  { title: 'POS', url: '/pos', icon: ShoppingCart, roles: ['super_admin', 'manager', 'cashier', 'waitstaff', 'bar_staff'] },
+  { title: 'Orders', url: '/orders', icon: ClipboardList, roles: ['super_admin', 'manager', 'cashier', 'bar_staff', 'kitchen_staff', 'waitstaff'] },
+  { title: 'Order History', url: '/order-history', icon: History, roles: ['super_admin', 'manager', 'cashier', 'waitstaff'] },
   { title: 'EOD Report', url: '/eod-report', icon: FileText, roles: ['super_admin', 'manager', 'cashier'] },
 ];
 
 const operationsNavItems: NavItem[] = [
-  { title: 'Bar', url: '/bar', icon: Wine, roles: ['super_admin', 'manager', 'bar_staff', 'cashier'] },
+  { title: 'Bar', url: '/bar', icon: Wine, roles: ['super_admin', 'manager', 'bar_staff', 'cashier', 'waitstaff'] },
   { title: 'Kitchen', url: '/kitchen', icon: ChefHat, roles: ['super_admin', 'manager', 'kitchen_staff'] },
-  { title: 'Bar Inventory', url: '/bar-inventory', icon: Package, roles: ['cashier'] },
+  { title: 'Bar Inventory', url: '/bar-inventory', icon: Package, roles: ['cashier', 'waitstaff'] },
   { title: 'Transfers', url: '/transfers', icon: ArrowRightLeft, roles: ['super_admin', 'manager', 'cashier', 'store_admin', 'waitstaff'] },
 ];
 

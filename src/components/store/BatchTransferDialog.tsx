@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Dialog,
@@ -35,7 +35,7 @@ import { useBars, useBarInventory, barsKeys, BarInventoryItem } from "@/hooks/us
 import { useCashierAssignment } from "@/hooks/useCashierAssignment";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Package, ArrowRightLeft, AlertCircle, Trash2 } from "lucide-react";
+import { Package, ArrowRightLeft, Trash2 } from "lucide-react";
 
 interface BatchTransferDialogProps {
   open: boolean;
@@ -50,7 +50,8 @@ interface TransferItem {
   quantity: number;
 }
 
-export const BatchTransferDialog = ({ open, onOpenChange }: BatchTransferDialogProps) => {
+export const BatchTransferDialog = forwardRef<HTMLDivElement, BatchTransferDialogProps>(
+  ({ open, onOpenChange }, ref) => {
   const { role, user } = useAuth();
   const queryClient = useQueryClient();
   const assignmentQuery = useCashierAssignment(user?.id || "");
@@ -441,4 +442,6 @@ export const BatchTransferDialog = ({ open, onOpenChange }: BatchTransferDialogP
       </DialogContent>
     </Dialog>
   );
-};
+});
+
+BatchTransferDialog.displayName = "BatchTransferDialog";

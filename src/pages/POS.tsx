@@ -405,7 +405,7 @@ const POS = () => {
 
   // Show restriction if cashier/waitstaff not assigned to a bar
   if (needsBarAssignment && isAssignmentFetched && !isAssignedToBar) {
-    return <CashierRestrictionAlert userName={user?.email?.split('@')[0]} />;
+    return <CashierRestrictionAlert userName={effectiveUserName?.split('@')[0] || staffUser?.full_name} />;
   }
 
   return (
