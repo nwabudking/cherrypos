@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCashierAssignment } from "@/hooks/useCashierAssignment";
+import { useSettings } from "@/hooks/useSettings";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { Search, Printer, Eye, History, CalendarIcon, X, Store, FileDown, FileSpreadsheet } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -91,6 +92,7 @@ interface Order {
   bar_id: string | null;
   order_items: OrderItem[];
   payments: { payment_method: string }[];
+  receipt_printed?: boolean;
 }
 
 const OrderHistory = () => {
@@ -105,10 +107,15 @@ const OrderHistory = () => {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [printedOrderIds, setPrintedOrderIds] = useState<Set<string>>(() => {
+    // Load printed order IDs from localStorage
+    const saved = localStorage.getItem('printedOrderIds');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const { data: bars = [] } = useBars();
-  
+  const { data: settings } = useSettings();
   // Get cashier's bar assignment
   const { data: cashierAssignment } = useCashierAssignment(user?.id || "");
 
@@ -222,6 +229,7 @@ const OrderHistory = () => {
     if (!printContent || !selectedOrder) return;
 
     const barName = getBarName(selectedOrder.bar_id);
+    const isPrinted = printedOrderIds.has(selectedOrder.id);
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -274,7 +282,7 @@ const OrderHistory = () => {
           </style>
         </head>
         <body>
-          <div class="reprint-notice">*** REPRINT ***</div>
+          ${isPrinted ? '<div class="reprint-notice">*** REPRINT ***</div>' : ''}
           <div class="copy-banner">${copyType.toUpperCase()} COPY</div>
           ${printContent.innerHTML.replace("CUSTOMER COPY", `${copyType.toUpperCase()} COPY`)}
           <div style="margin-top: 10px; text-align: center; font-size: 10px;">
@@ -287,7 +295,17 @@ const OrderHistory = () => {
     printWindow.focus();
     printWindow.print();
     printWindow.close();
+
+    // Mark order as printed
+    if (!isPrinted) {
+      const newPrintedIds = new Set(printedOrderIds);
+      newPrintedIds.add(selectedOrder.id);
+      setPrintedOrderIds(newPrintedIds);
+      localStorage.setItem('printedOrderIds', JSON.stringify([...newPrintedIds]));
+    }
   };
+
+  const isOrderPrinted = (orderId: string) => printedOrderIds.has(orderId);
 
   return (
     <div className="space-y-6 p-6">
@@ -522,7 +540,7 @@ const OrderHistory = () => {
                               }}
                             >
                               <Printer className="h-4 w-4 mr-1" />
-                              Reprint
+                              {isOrderPrinted(order.id) ? "Reprint" : "Print"}
                             </Button>
                           )}
                         </div>
@@ -559,13 +577,13 @@ const OrderHistory = () => {
                     CUSTOMER COPY
                   </div>
 
-                  {/* Header */}
+                  {/* Header - Using restaurant settings */}
                   <div className="text-center mb-4">
-                    <h1 className="text-xl font-bold">CHERRY DINING</h1>
-                    <p className="text-xs">& Lounge</p>
-                    <p className="text-xs mt-2">Nicton Road</p>
-                    <p className="text-xs">Bayelsa, Nigeria</p>
-                    <p className="text-xs">Tel: +234 800 000 0000</p>
+                    <h1 className="text-xl font-bold">{settings?.name || "CHERRY DINING"}</h1>
+                    {settings?.tagline && <p className="text-xs">{settings.tagline}</p>}
+                    <p className="text-xs mt-2">{settings?.address || "123 Restaurant Street"}</p>
+                    <p className="text-xs">{settings?.city || "Lagos"}, {settings?.country || "Nigeria"}</p>
+                    <p className="text-xs">Tel: {settings?.phone || "+234 800 000 0000"}</p>
                   </div>
 
                   <div className="border-t border-dashed border-gray-400 my-3" />
@@ -602,7 +620,7 @@ const OrderHistory = () => {
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span>Bar:</span>
+                      <span>Served from:</span>
                       <span className="font-bold">{getBarName(selectedOrder.bar_id)}</span>
                     </div>
                   </div>
@@ -615,36 +633,46 @@ const OrderHistory = () => {
                       <span>ITEM</span>
                       <span>AMOUNT</span>
                     </div>
-                    {selectedOrder.order_items?.map((item) => (
-                      <div key={item.id} className="text-xs">
-                        <div className="flex justify-between">
-                          <span className="flex-1 truncate pr-2">
-                            {item.quantity}x {item.item_name}
-                          </span>
-                          <span>₦{item.total_price.toLocaleString()}</span>
+                    {selectedOrder.order_items?.map((item) => {
+                      const currencySymbol = settings?.currency === "USD" ? "$" : settings?.currency === "GBP" ? "£" : settings?.currency === "EUR" ? "€" : "₦";
+                      return (
+                        <div key={item.id} className="text-xs">
+                          <div className="flex justify-between">
+                            <span className="flex-1 truncate pr-2">
+                              {item.quantity}x {item.item_name}
+                            </span>
+                            <span>{currencySymbol}{item.total_price.toLocaleString()}</span>
+                          </div>
+                          {item.notes && (
+                            <p className="text-[10px] text-gray-600 pl-4">
+                              Note: {item.notes}
+                            </p>
+                          )}
                         </div>
-                        {item.notes && (
-                          <p className="text-[10px] text-gray-600 pl-4">
-                            Note: {item.notes}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <div className="border-t border-dashed border-gray-400 my-3" />
 
                   {/* Totals */}
                   <div className="space-y-1 text-xs">
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span>₦{selectedOrder.subtotal.toLocaleString()}</span>
-                    </div>
-                    <div className="border-t border-gray-400 my-2" />
-                    <div className="flex justify-between font-bold text-base">
-                      <span>TOTAL:</span>
-                      <span>₦{selectedOrder.total_amount.toLocaleString()}</span>
-                    </div>
+                    {(() => {
+                      const currencySymbol = settings?.currency === "USD" ? "$" : settings?.currency === "GBP" ? "£" : settings?.currency === "EUR" ? "€" : "₦";
+                      return (
+                        <>
+                          <div className="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span>{currencySymbol}{selectedOrder.subtotal.toLocaleString()}</span>
+                          </div>
+                          <div className="border-t border-gray-400 my-2" />
+                          <div className="flex justify-between font-bold text-base">
+                            <span>TOTAL:</span>
+                            <span>{currencySymbol}{selectedOrder.total_amount.toLocaleString()}</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <div className="border-t border-dashed border-gray-400 my-3" />
@@ -668,9 +696,9 @@ const OrderHistory = () => {
 
                   <div className="border-t border-dashed border-gray-400 my-3" />
 
-                  {/* Footer */}
+                  {/* Footer - Using restaurant settings */}
                   <div className="text-center text-xs space-y-2">
-                    <p className="font-bold">Thank you for dining with us!</p>
+                    <p className="font-bold">{settings?.receipt_footer || "Thank you for dining with us!"}</p>
                     <p>We hope to see you again soon.</p>
                   </div>
                 </div>

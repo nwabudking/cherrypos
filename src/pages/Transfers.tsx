@@ -58,9 +58,10 @@ import { BatchTransferDialog } from "@/components/store/BatchTransferDialog";
 const TransfersPage = () => {
   const { userId, role, isAdmin, isCashier, isWaitstaff, barId: assignedBarId, barName: assignedBarName, assignmentLoading, staffUserId, isLocalStaff } = useEffectiveUser();
   
-  // Enable transfer notifications for cashiers/waitstaff
+  // Waitstaff should not have access to transfers - redirect them appropriately
+  // Only enable transfer notifications for cashiers (not waitstaff anymore)
   useTransferNotifications({
-    enabled: (isCashier || isWaitstaff) && !!assignedBarId,
+    enabled: isCashier && !!assignedBarId,
     soundEnabled: true,
     userId: userId,
   });
@@ -77,9 +78,9 @@ const TransfersPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   
-  // For cashiers/waitstaff: show inventory from their assigned bar (sender)
+  // For cashiers: show inventory from their assigned bar (sender)
   // For admins: show inventory from selected source bar
-  const isStaffRole = isCashier || isWaitstaff;
+  const isStaffRole = isCashier; // Only cashiers, not waitstaff
   const effectiveSourceBarId = isStaffRole ? (assignedBarId || "") : sourceBarId;
   const { data: sourceInventory = [] } = useBarInventory(effectiveSourceBarId);
   const selectedItem = sourceInventory.find(i => i.inventory_item_id === inventoryItemId);
@@ -218,8 +219,8 @@ const TransfersPage = () => {
     ]);
   };
 
-  // Show no bar assignment message for staff without a bar
-  if (isStaffRole && !assignedBarId && !assignmentLoading) {
+  // Show no bar assignment message for cashiers without a bar
+  if (isCashier && !assignedBarId && !assignmentLoading) {
     return (
       <div className="p-6">
         <Card>
@@ -264,8 +265,8 @@ const TransfersPage = () => {
         </div>
       </div>
 
-      {/* Staff Info Banner */}
-      {(isCashier || isWaitstaff) && assignedBarId && (
+      {/* Staff Info Banner - Only for cashiers */}
+      {isCashier && assignedBarId && (
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -282,8 +283,8 @@ const TransfersPage = () => {
         </Card>
       )}
 
-      {/* Incoming Transfer Requests (for cashiers/waitstaff to accept/reject) */}
-      {(isCashier || isWaitstaff) && incomingRequests.length > 0 && (
+      {/* Incoming Transfer Requests (for cashiers to accept/reject - not waitstaff) */}
+      {isCashier && incomingRequests.length > 0 && (
         <Card className="border-amber-500 border-2">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">

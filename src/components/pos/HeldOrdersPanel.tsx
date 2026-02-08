@@ -53,7 +53,7 @@ export const HeldOrdersPanel = ({
           Held Orders ({heldOrders.length})
         </CardTitle>
       </CardHeader>
-      <ScrollArea className="max-h-48">
+      <ScrollArea className="h-[180px]">
         <CardContent className="p-2 space-y-2">
           {heldOrders.map((order) => {
             const total = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);

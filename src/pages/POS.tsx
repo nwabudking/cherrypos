@@ -81,23 +81,25 @@ const POS = () => {
   // Check if user needs bar assignment (cashiers and waitstaff need assignment)
   const isCashier = effectiveRole === "cashier";
   const isWaitstaff = effectiveRole === "waitstaff";
-  const needsBarAssignment = isCashier || isWaitstaff;
+  // Cashiers need bar assignment, waitstaff can switch bars like admins
+  const needsBarAssignment = isCashier;
   const isAssignedToBar = !!cashierAssignment?.bar_id;
-  const isPrivilegedRole = effectiveRole === "super_admin" || effectiveRole === "manager" || effectiveRole === "bar_staff";
+  const isPrivilegedRole = effectiveRole === "super_admin" || effectiveRole === "manager" || effectiveRole === "bar_staff" || effectiveRole === "waitstaff";
   const canAccessPOS = !needsBarAssignment || isAssignedToBar || isPrivilegedRole;
 
-  // Auto-set active bar for cashiers/waitstaff based on their assignment
+  // Auto-set active bar for cashiers only based on their assignment
   useEffect(() => {
-    if (isAssignmentFetched && cashierAssignment?.bar_id && needsBarAssignment) {
+    if (isAssignmentFetched && cashierAssignment?.bar_id && isCashier) {
       const assignedBar = bars.find(b => b.id === cashierAssignment.bar_id);
       if (assignedBar && activeBar?.id !== assignedBar.id) {
         setActiveBar(assignedBar);
       }
     }
-  }, [cashierAssignment, bars, activeBar, setActiveBar, needsBarAssignment, isAssignmentFetched]);
+  }, [cashierAssignment, bars, activeBar, setActiveBar, isCashier, isAssignmentFetched]);
   
   // Determine the effective bar for stock lookup
-  const effectiveBarId = needsBarAssignment && cashierAssignment?.bar_id 
+  // Cashiers use their assigned bar, waitstaff and admins use selected bar
+  const effectiveBarId = isCashier && cashierAssignment?.bar_id 
     ? cashierAssignment.bar_id 
     : activeBar?.id || null;
   
@@ -394,8 +396,8 @@ const POS = () => {
   // Show warning if no bar selected and items need tracking
   const noBarSelected = !effectiveBarId && menuItems.some(m => m.track_inventory);
 
-  // Show loading while checking assignment for cashiers/waitstaff
-  if (needsBarAssignment && isLoadingAssignment) {
+  // Show loading while checking assignment for cashiers
+  if (isCashier && isLoadingAssignment) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-muted-foreground">Loading your bar assignment...</div>
@@ -403,8 +405,8 @@ const POS = () => {
     );
   }
 
-  // Show restriction if cashier/waitstaff not assigned to a bar
-  if (needsBarAssignment && isAssignmentFetched && !isAssignedToBar) {
+  // Show restriction if cashier not assigned to a bar
+  if (isCashier && isAssignmentFetched && !isAssignedToBar) {
     return <CashierRestrictionAlert userName={effectiveUserName?.split('@')[0] || staffUser?.full_name} />;
   }
 
@@ -419,8 +421,8 @@ const POS = () => {
           setTableNumber={setTableNumber}
         >
           <div className="flex items-center gap-2">
-            {/* Show bar selector for admins/managers, just display for cashiers/waitstaff */}
-            {isCashier || isWaitstaff ? (
+            {/* Show bar selector for admins/managers/waitstaff, just display for cashiers */}
+            {isCashier ? (
               <CashierBarDisplay />
             ) : (
               <BarSelector />
