@@ -88,6 +88,7 @@ import { StockHistoryTab } from "@/components/store/StockHistoryTab";
 import { BarInventoryLevelsTab } from "@/components/store/BarInventoryLevelsTab";
 import { BulkImportDialog } from "@/components/store/BulkImportDialog";
 import { ExpiryAlert } from "@/components/store/ExpiryAlert";
+import { WithdrawFromBarDialog } from "@/components/store/WithdrawFromBarDialog";
 import type { InventoryItem } from "@/types/inventory";
 
 type MovementType = "in" | "out" | "adjustment";
@@ -123,6 +124,9 @@ const StorePage = () => {
   
   // Bulk import dialog
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  
+  // Withdraw from bar dialog
+  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
   
   // Delete confirmation
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -447,6 +451,12 @@ const StorePage = () => {
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   Bulk Import
                 </Button>
+                {canTransfer && (
+                  <Button variant="outline" onClick={() => setIsWithdrawDialogOpen(true)}>
+                    <ArrowRightLeft className="h-4 w-4 mr-2" />
+                    Withdraw from Bar
+                  </Button>
+                )}
                 <Button variant="outline" onClick={() => setIsCategoryDialogOpen(true)}>
                   <FolderPlus className="h-4 w-4 mr-2" />
                   Add Category
@@ -775,6 +785,12 @@ const StorePage = () => {
       <BulkImportDialog
         open={isBulkImportOpen}
         onOpenChange={setIsBulkImportOpen}
+      />
+
+      {/* Withdraw from Bar Dialog */}
+      <WithdrawFromBarDialog
+        open={isWithdrawDialogOpen}
+        onOpenChange={setIsWithdrawDialogOpen}
       />
     </div>
   );

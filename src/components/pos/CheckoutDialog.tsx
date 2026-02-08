@@ -212,7 +212,7 @@ export const CheckoutDialog = ({
                 className="w-full"
                 onClick={handleClose}
               >
-                {hasPrinted ? "Done" : "Skip Printing & Close"}
+                Done
               </Button>
             </div>
           </div>
