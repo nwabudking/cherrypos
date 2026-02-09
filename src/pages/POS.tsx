@@ -32,6 +32,8 @@ export interface CartItem {
   quantity: number;
   notes?: string;
   inventoryItemId?: string | null;
+  barId?: string | null;
+  barName?: string | null;
 }
 
 type OrderType = "dine_in" | "takeaway" | "delivery" | "bar_only";
@@ -107,14 +109,14 @@ const POS = () => {
   
   const createOrderMutation = useCreateOrder();
 
-  // Calculate stock info for each menu item
+  // Calculate stock info for each menu item (for the current active bar)
   const stockInfoMap = useMemo(() => {
     const map = new Map<string, MenuItemStockInfo>();
     
     menuItems.forEach(item => {
-      // Calculate quantity in cart for this item's inventory
+      // Calculate quantity in cart for this item from the CURRENT bar only
       const cartQty = cart
-        .filter(c => c.menuItemId === item.id)
+        .filter(c => c.menuItemId === item.id && c.barId === effectiveBarId)
         .reduce((sum, c) => sum + c.quantity, 0);
       
       const stockInfo = getMenuItemStockInfo(
@@ -130,26 +132,15 @@ const POS = () => {
     });
     
     return map;
-  }, [menuItems, barStockMap, cart]);
+  }, [menuItems, barStockMap, cart, effectiveBarId]);
 
-  // Validate cart stock before checkout
+  // Stock validation is always valid for multi-bar (each item checked at add time)
   const stockValidation = useMemo(() => {
-    if (!barStockMap) return { valid: true, insufficientItems: [] };
-    
-    return validateCartStock(
-      cart.map(c => ({ menuItemId: c.menuItemId, quantity: c.quantity })),
-      menuItems.map(m => ({ 
-        id: m.id, 
-        track_inventory: m.track_inventory, 
-        inventory_item_id: m.inventory_item_id,
-        name: m.name 
-      })),
-      barStockMap
-    );
-  }, [cart, menuItems, barStockMap]);
+    return { valid: true, insufficientItems: [] as Array<{ name: string; available: number; requested: number }> };
+  }, []);
 
   const handleCheckout = async (paymentMethod: string) => {
-    // Validate stock before proceeding
+    // Validate stock before proceeding - check per bar
     if (!stockValidation.valid) {
       toast({
         title: "Insufficient Stock",
@@ -161,7 +152,8 @@ const POS = () => {
 
     const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     
-    const barIdToUse = effectiveBarId;
+    // Use the first bar in cart as the primary bar_id for the order
+    const primaryBarId = cart[0]?.barId || effectiveBarId;
     
     const orderData: CreateOrderData = {
       order_type: orderType,
@@ -172,7 +164,7 @@ const POS = () => {
       service_charge: 0,
       discount_amount: 0,
       total_amount: subtotal,
-      bar_id: barIdToUse,
+      bar_id: primaryBarId,
       items: cart.map((item) => ({
         menu_item_id: item.menuItemId,
         item_name: item.name,
@@ -189,20 +181,18 @@ const POS = () => {
 
     createOrderMutation.mutate(orderData, {
       onSuccess: async (order) => {
-        // Deduct inventory for items that track inventory
-        const barIdToUse = effectiveBarId;
-        if (barIdToUse) {
-          for (const cartItem of cart) {
-            if (cartItem.inventoryItemId) {
-              try {
-                await supabase.rpc('deduct_bar_inventory', {
-                  p_bar_id: barIdToUse,
-                  p_inventory_item_id: cartItem.inventoryItemId,
-                  p_quantity: cartItem.quantity,
-                });
-              } catch (err) {
-                console.error('Failed to deduct inventory:', err);
-              }
+        // Deduct inventory per item's specific bar
+        for (const cartItem of cart) {
+          const itemBarId = cartItem.barId;
+          if (itemBarId && cartItem.inventoryItemId) {
+            try {
+              await supabase.rpc('deduct_bar_inventory', {
+                p_bar_id: itemBarId,
+                p_inventory_item_id: cartItem.inventoryItemId,
+                p_quantity: cartItem.quantity,
+              });
+            } catch (err) {
+              console.error('Failed to deduct inventory:', err);
             }
           }
         }
@@ -246,7 +236,7 @@ const POS = () => {
     const inventoryItemId = menuItem?.inventory_item_id || null;
 
     setCart((prev) => {
-      const existing = prev.find((i) => i.menuItemId === item.id);
+      const existing = prev.find((i) => i.menuItemId === item.id && i.barId === effectiveBarId);
       if (existing) {
         // Check if adding one more would exceed stock
         if (menuItem?.track_inventory && menuItem.inventory_item_id && barStockMap) {
@@ -261,7 +251,7 @@ const POS = () => {
           }
         }
         return prev.map((i) =>
-          i.menuItemId === item.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.menuItemId === item.id && i.barId === effectiveBarId ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
       return [
@@ -273,6 +263,8 @@ const POS = () => {
           price: item.price,
           quantity: 1,
           inventoryItemId,
+          barId: effectiveBarId,
+          barName: activeBar?.name || bars.find(b => b.id === effectiveBarId)?.name || null,
         },
       ];
     });

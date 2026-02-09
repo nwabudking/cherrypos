@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +23,7 @@ interface CheckoutDialogProps {
   tableNumber: string;
   onConfirmPayment: (method: string) => void;
   isProcessing: boolean;
-  completedOrder: { order_number: string } | null;
+  completedOrder: { id?: string; order_number: string } | null;
   onClose: () => void;
   cashierName?: string;
   barName?: string;
@@ -140,11 +141,26 @@ export const CheckoutDialog = ({
     printWindow.close();
   };
 
-  const handlePrintBoth = () => {
-    if (!canReprint && hasPrinted) return; // Prevent re-printing for cashiers/waitstaff
+  const handlePrintBoth = async () => {
+    if (!canReprint && hasPrinted) return;
     handlePrint("customer");
     setTimeout(() => handlePrint("office"), 500);
     setHasPrinted(true);
+    
+    // Mark as printed in database
+    if (completedOrder?.id) {
+      try {
+        await supabase
+          .from('orders')
+          .update({ 
+            receipt_printed: true,
+            receipt_printed_at: new Date().toISOString(),
+          })
+          .eq('id', completedOrder.id);
+      } catch (err) {
+        console.error('Failed to update print status:', err);
+      }
+    }
   };
 
   const handleClose = () => {

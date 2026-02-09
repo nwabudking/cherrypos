@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCashierAssignment } from "@/hooks/useCashierAssignment";
@@ -97,6 +97,7 @@ interface Order {
 
 const OrderHistory = () => {
   const { user, role } = useAuth();
+  const queryClient = useQueryClient();
   const isAdmin = role === "super_admin" || role === "manager";
   const isCashier = role === "cashier";
 
@@ -107,11 +108,6 @@ const OrderHistory = () => {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
-  const [printedOrderIds, setPrintedOrderIds] = useState<Set<string>>(() => {
-    // Load printed order IDs from localStorage
-    const saved = localStorage.getItem('printedOrderIds');
-    return saved ? new Set(JSON.parse(saved)) : new Set();
-  });
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const { data: bars = [] } = useBars();
@@ -224,12 +220,12 @@ const OrderHistory = () => {
     ]);
   };
 
-  const handlePrint = (copyType: "customer" | "office") => {
+  const handlePrint = async (copyType: "customer" | "office") => {
     const printContent = receiptRef.current;
     if (!printContent || !selectedOrder) return;
 
     const barName = getBarName(selectedOrder.bar_id);
-    const isPrinted = printedOrderIds.has(selectedOrder.id);
+    const isPrinted = selectedOrder.receipt_printed;
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -296,16 +292,32 @@ const OrderHistory = () => {
     printWindow.print();
     printWindow.close();
 
-    // Mark order as printed
+    // Mark order as printed in database if not already
     if (!isPrinted) {
-      const newPrintedIds = new Set(printedOrderIds);
-      newPrintedIds.add(selectedOrder.id);
-      setPrintedOrderIds(newPrintedIds);
-      localStorage.setItem('printedOrderIds', JSON.stringify([...newPrintedIds]));
+      try {
+        await supabase
+          .from('orders')
+          .update({ 
+            receipt_printed: true, 
+            receipt_printed_at: new Date().toISOString(),
+            receipt_printed_by: user?.email || 'admin'
+          })
+          .eq('id', selectedOrder.id);
+        
+        // Update local state
+        selectedOrder.receipt_printed = true;
+        // Refresh orders list
+        queryClient.invalidateQueries({ queryKey: ["order-history"] });
+      } catch (err) {
+        console.error('Failed to update print status:', err);
+      }
     }
   };
 
-  const isOrderPrinted = (orderId: string) => printedOrderIds.has(orderId);
+  const isOrderPrinted = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    return order?.receipt_printed || false;
+  };
 
   return (
     <div className="space-y-6 p-6">

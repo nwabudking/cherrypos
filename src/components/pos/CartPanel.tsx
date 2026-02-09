@@ -92,6 +92,11 @@ export const CartPanel = ({
                     <p className="text-sm text-muted-foreground">
                       {formatPrice(item.price)} each
                     </p>
+                    {item.barName && (
+                      <p className="text-xs text-primary/70 font-medium">
+                        📍 {item.barName}
+                      </p>
+                    )}
                     {isInsufficient && (
                       <p className="text-xs text-destructive mt-1">
                         Insufficient stock

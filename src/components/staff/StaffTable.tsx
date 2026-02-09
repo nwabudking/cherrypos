@@ -93,6 +93,7 @@ export const StaffTable = ({
         <TableHeader>
           <TableRow className="bg-muted/50">
             <TableHead>Staff Member</TableHead>
+            <TableHead>Username</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Assigned Bar</TableHead>
@@ -125,6 +126,9 @@ export const StaffTable = ({
                       )}
                     </div>
                   </div>
+                </TableCell>
+                <TableCell className="font-mono text-sm text-muted-foreground">
+                  {member.username || "-"}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {member.email || "-"}
