@@ -9,6 +9,7 @@ interface CartItem {
   price: number;
   quantity: number;
   notes?: string;
+  barName?: string | null;
 }
 
 interface ReceiptProps {
@@ -167,6 +168,9 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
                 </span>
                 <span>{currencySymbol}{(item.price * item.quantity).toLocaleString()}</span>
               </div>
+              {item.barName && (
+                <p className="text-[10px] text-gray-500 pl-4">Bar: {item.barName}</p>
+              )}
               {item.notes && (
                 <p className="text-[10px] text-gray-600 pl-4">Note: {item.notes}</p>
               )}

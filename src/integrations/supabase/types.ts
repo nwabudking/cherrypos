@@ -517,6 +517,9 @@ export type Database = {
           notes: string | null
           order_number: string
           order_type: string
+          receipt_printed: boolean
+          receipt_printed_at: string | null
+          receipt_printed_by: string | null
           service_charge: number
           status: string
           subtotal: number
@@ -534,6 +537,9 @@ export type Database = {
           notes?: string | null
           order_number: string
           order_type: string
+          receipt_printed?: boolean
+          receipt_printed_at?: string | null
+          receipt_printed_by?: string | null
           service_charge?: number
           status?: string
           subtotal?: number
@@ -551,6 +557,9 @@ export type Database = {
           notes?: string | null
           order_number?: string
           order_type?: string
+          receipt_printed?: boolean
+          receipt_printed_at?: string | null
+          receipt_printed_by?: string | null
           service_charge?: number
           status?: string
           subtotal?: number

@@ -81,6 +81,25 @@ export const WithdrawFromBarDialog = ({
 
       if (deductError) throw deductError;
 
+      // Add withdrawn quantity back to store inventory
+      const { data: storeItem, error: fetchError } = await supabase
+        .from('inventory_items')
+        .select('current_stock')
+        .eq('id', selectedItemId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { error: updateStoreError } = await supabase
+        .from('inventory_items')
+        .update({ 
+          current_stock: (storeItem?.current_stock || 0) + qty,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedItemId);
+
+      if (updateStoreError) throw updateStoreError;
+
       // Log the withdrawal in audit_logs
       await supabase.from('audit_logs').insert({
         action_type: 'withdraw',
@@ -93,12 +112,13 @@ export const WithdrawFromBarDialog = ({
           notes: notes || null,
           previous_stock: selectedItem!.current_stock,
           new_stock: selectedItem!.current_stock - qty,
+          returned_to_store: true,
         },
       });
 
       toast({ 
         title: "Withdrawal successful", 
-        description: `${qty} units withdrawn from ${bars.find(b => b.id === selectedBarId)?.name}` 
+        description: `${qty} units withdrawn from ${bars.find(b => b.id === selectedBarId)?.name} and returned to store` 
       });
 
       // Reset form
@@ -111,6 +131,7 @@ export const WithdrawFromBarDialog = ({
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ["bar-inventory"] });
       queryClient.invalidateQueries({ queryKey: ["bars"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
     } catch (error: any) {
       toast({ 
         title: "Withdrawal failed", 
@@ -205,9 +226,9 @@ export const WithdrawFromBarDialog = ({
             />
           </div>
 
-          <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-            <p className="text-sm text-destructive font-medium">
-              Warning: This will permanently remove items from the bar's inventory.
+          <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+            <p className="text-sm text-amber-700 font-medium">
+              Note: Withdrawn items will be returned to the store inventory.
             </p>
           </div>
         </div>
