@@ -1,6 +1,7 @@
 -- ============================================
 -- Cherry Dining POS - Table Definitions
 -- Supabase-compatible - Schema Only
+-- Updated: 2026-02-10
 -- ============================================
 
 -- Custom enum type for app roles
@@ -38,6 +39,23 @@ CREATE TABLE public.user_roles (
   role public.app_role NOT NULL DEFAULT 'cashier'::app_role,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   CONSTRAINT user_roles_user_id_role_key UNIQUE (user_id, role)
+);
+
+-- ============================================
+-- Staff users table (local authentication)
+-- ============================================
+CREATE TABLE public.staff_users (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  email TEXT,
+  role public.app_role NOT NULL DEFAULT 'cashier'::app_role,
+  is_active BOOLEAN DEFAULT true,
+  created_by UUID,
+  last_login_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
 -- ============================================
@@ -162,13 +180,13 @@ CREATE TABLE public.bar_inventory (
 -- ============================================
 CREATE TABLE public.cashier_bar_assignments (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL,
+  user_id UUID,
+  staff_user_id UUID REFERENCES public.staff_users(id),
   bar_id UUID NOT NULL REFERENCES public.bars(id) ON DELETE CASCADE,
   assigned_by UUID,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  CONSTRAINT cashier_bar_assignments_user_id_bar_id_key UNIQUE (user_id, bar_id)
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
 -- ============================================
@@ -187,6 +205,9 @@ CREATE TABLE public.orders (
   status TEXT NOT NULL DEFAULT 'pending'::text,
   notes TEXT,
   bar_id UUID REFERENCES public.bars(id),
+  receipt_printed BOOLEAN NOT NULL DEFAULT false,
+  receipt_printed_at TIMESTAMP WITH TIME ZONE,
+  receipt_printed_by TEXT,
   created_by UUID,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()

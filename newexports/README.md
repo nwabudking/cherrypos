@@ -1,5 +1,7 @@
 # Cherry Dining POS - Database Schema Export
 
+**Last Updated: 2026-02-10**
+
 This folder contains the complete database schema for the Cherry Dining & Lounge POS System.
 These files can be used to recreate the backend on a fresh Supabase or local PostgreSQL instance.
 
@@ -7,13 +9,13 @@ These files can be used to recreate the backend on a fresh Supabase or local Pos
 
 | File | Description |
 |------|-------------|
-| `extensions.sql` | PostgreSQL extensions (uuid-ossp, pgcrypto) |
-| `tables.sql` | All table definitions with constraints |
+| `extensions.sql` | PostgreSQL extensions (uuid-ossp, pgcrypto, pg_cron, pg_net) |
+| `tables.sql` | All table definitions with constraints (18 tables) |
 | `indexes.sql` | Performance indexes |
 | `views.sql` | Database views (currently empty) |
-| `functions.sql` | All database functions (RPC calls, triggers) |
-| `triggers.sql` | Database triggers |
-| `rls_policies.sql` | Row Level Security policies |
+| `functions.sql` | All database functions (20 functions incl. staff auth & transfers) |
+| `triggers.sql` | Database triggers (updated_at, price sync, stock availability) |
+| `rls_policies.sql` | Row Level Security policies (all 18 tables) |
 | `grants.sql` | Permission grants |
 | `schema_full.sql` | **Single file containing everything above** |
 
@@ -63,12 +65,48 @@ INSERT INTO public.restaurant_settings (name, tagline)
 VALUES ('Your Restaurant Name', 'Your Tagline');
 ```
 
+### 4. Schedule Transfer Expiry (Optional)
+If using pg_cron, schedule the expire-transfers edge function:
+
+```sql
+SELECT cron.schedule(
+  'expire-pending-transfers',
+  '0 * * * *',
+  $$SELECT net.http_post('YOUR_SUPABASE_URL/functions/v1/expire-transfers', '{}', '{"Authorization":"Bearer YOUR_SERVICE_ROLE_KEY"}')$$
+);
+```
+
 ## Important Notes
 
 - **Schema Only**: These files contain NO DATA, only structure
 - **No Secrets**: No API keys or credentials are included
 - **Supabase Compatible**: Uses Supabase-specific features (auth.uid(), RLS)
 - **PostgreSQL Version**: Tested with PostgreSQL 14+
+- **Local Staff Auth**: Supports local staff login via `staff_users` table with bcrypt password hashing
+- **Receipt Print Tracking**: `orders.receipt_printed` flag tracks print status globally across all users
+
+## Tables Summary
+
+| Table | Description |
+|-------|-------------|
+| `profiles` | Extends auth.users with display info |
+| `user_roles` | Supabase auth user role assignments |
+| `staff_users` | Local staff authentication (username/password) |
+| `restaurant_settings` | Restaurant config & receipt settings |
+| `suppliers` | Supplier contact information |
+| `inventory_items` | Store inventory items |
+| `menu_categories` | Menu category groupings |
+| `menu_items` | Menu items with optional inventory linking |
+| `bars` | Bar/outlet definitions |
+| `bar_inventory` | Per-bar stock levels |
+| `cashier_bar_assignments` | Staff-to-bar assignments |
+| `orders` | Order records with receipt print tracking |
+| `order_items` | Line items per order |
+| `payments` | Payment records |
+| `stock_movements` | Stock change audit trail |
+| `inventory_transfers` | Store-to-bar transfer records |
+| `bar_to_bar_transfers` | Inter-bar transfer requests |
+| `audit_logs` | System-wide audit trail |
 
 ## Role Hierarchy
 
@@ -77,7 +115,7 @@ VALUES ('Your Restaurant Name', 'Your Tagline');
 | `super_admin` | Full system access |
 | `manager` | Store management, staff, reports |
 | `cashier` | POS, assigned bar only |
-| `waitstaff` | POS and transfers only |
+| `waitstaff` | POS (multi-bar switching), no transfers |
 | `bar_staff` | Bar operations |
 | `kitchen_staff` | Kitchen display |
 | `inventory_officer` | Inventory management |

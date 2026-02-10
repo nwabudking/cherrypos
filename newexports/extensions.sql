@@ -1,7 +1,7 @@
 -- ============================================
 -- Cherry Dining POS - PostgreSQL Extensions
 -- Supabase-compatible - Schema Only
--- Updated: 2026-01-22
+-- Updated: 2026-02-10
 -- ============================================
 
 -- UUID generation extension (typically pre-installed in Supabase)

@@ -1,7 +1,7 @@
 -- ============================================
 -- Cherry Dining POS - View Definitions
 -- Supabase-compatible - Schema Only
--- Updated: 2026-01-22
+-- Updated: 2026-02-10
 -- ============================================
 
 -- No custom views defined in this schema

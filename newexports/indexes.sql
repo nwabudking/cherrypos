@@ -1,7 +1,7 @@
 -- ============================================
 -- Cherry Dining POS - Index Definitions
 -- Supabase-compatible - Schema Only
--- Updated: 2026-01-22
+-- Updated: 2026-02-10
 -- ============================================
 
 -- Bar inventory indexes
@@ -31,6 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_inventory_transfers_item ON public.inventory_tran
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders (created_at);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders (status);
 CREATE INDEX IF NOT EXISTS idx_orders_bar ON public.orders (bar_id);
+CREATE INDEX IF NOT EXISTS idx_orders_receipt_printed ON public.orders (receipt_printed);
 
 -- Order items indexes
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON public.order_items (order_id);
