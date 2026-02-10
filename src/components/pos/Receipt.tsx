@@ -138,12 +138,6 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
               <span>{tableNumber}</span>
             </div>
           )}
-          {barName && (
-            <div className="flex justify-between">
-              <span>Served from:</span>
-              <span className="font-bold">{barName}</span>
-            </div>
-          )}
           {cashierName && (
             <div className="flex justify-between">
               <span>Served by:</span>
@@ -169,7 +163,7 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
                 <span>{currencySymbol}{(item.price * item.quantity).toLocaleString()}</span>
               </div>
               {item.barName && (
-                <p className="text-[10px] text-gray-500 pl-4">Bar: {item.barName}</p>
+                <p className="text-[10px] text-gray-500 pl-4">📍 {item.barName}</p>
               )}
               {item.notes && (
                 <p className="text-[10px] text-gray-600 pl-4">Note: {item.notes}</p>
