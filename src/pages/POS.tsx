@@ -494,7 +494,7 @@ const POS = () => {
         onClose={handleCloseCheckout}
         canReprint={canReprint}
         insufficientStock={stockValidation.insufficientItems}
-        cashierName={activeBar?.name}
+        cashierName={staffUser?.full_name || user?.email?.split('@')[0] || 'Staff'}
       />
     </div>
   );
