@@ -148,28 +148,46 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
 
         <div className="border-t border-dashed border-gray-400 my-3" />
 
-        {/* Items */}
+        {/* Items - grouped by bar */}
         <div className="space-y-2">
           <div className="flex justify-between text-xs font-bold">
             <span>ITEM</span>
             <span>AMOUNT</span>
           </div>
-          {items.map((item) => (
-            <div key={item.id} className="text-xs">
-              <div className="flex justify-between">
-                <span className="flex-1 truncate pr-2">
-                  {item.quantity}x {item.name}
-                </span>
-                <span>{currencySymbol}{(item.price * item.quantity).toLocaleString()}</span>
+          {(() => {
+            // Group items by bar
+            const grouped: Record<string, CartItem[]> = {};
+            items.forEach((item) => {
+              const key = item.barName || "Other";
+              if (!grouped[key]) grouped[key] = [];
+              grouped[key].push(item);
+            });
+            const barNames = Object.keys(grouped);
+            const hasMultipleBars = barNames.length > 1 || (barNames.length === 1 && barNames[0] !== "Other");
+
+            return barNames.map((bar) => (
+              <div key={bar}>
+                {hasMultipleBars && (
+                  <div className="text-[10px] font-bold text-gray-700 mt-2 mb-1 border-b border-gray-200 pb-0.5">
+                    📍 {bar}
+                  </div>
+                )}
+                {grouped[bar].map((item) => (
+                  <div key={item.id} className="text-xs">
+                    <div className="flex justify-between">
+                      <span className="flex-1 truncate pr-2">
+                        {item.quantity}x {item.name}
+                      </span>
+                      <span>{currencySymbol}{(item.price * item.quantity).toLocaleString()}</span>
+                    </div>
+                    {item.notes && (
+                      <p className="text-[10px] text-gray-600 pl-4">Note: {item.notes}</p>
+                    )}
+                  </div>
+                ))}
               </div>
-              {item.barName && (
-                <p className="text-[10px] text-gray-500 pl-4">📍 {item.barName}</p>
-              )}
-              {item.notes && (
-                <p className="text-[10px] text-gray-600 pl-4">Note: {item.notes}</p>
-              )}
-            </div>
-          ))}
+            ));
+          })()}
         </div>
 
         <div className="border-t border-dashed border-gray-400 my-3" />
