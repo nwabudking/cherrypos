@@ -1,6 +1,6 @@
 # Cherry Dining POS - Database Schema Export
 
-**Last Updated: 2026-02-10**
+**Last Updated: 2026-02-12**
 
 This folder contains the complete database schema for the Cherry Dining & Lounge POS System.
 These files can be used to recreate the backend on a fresh Supabase or local PostgreSQL instance.

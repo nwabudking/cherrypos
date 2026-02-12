@@ -1,7 +1,7 @@
 -- ============================================
 -- Cherry Dining POS - Table Definitions
 -- Supabase-compatible - Schema Only
--- Updated: 2026-02-10
+-- Updated: 2026-02-12
 -- ============================================
 
 -- Custom enum type for app roles

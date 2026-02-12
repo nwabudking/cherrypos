@@ -1,7 +1,7 @@
 -- ============================================
 -- Cherry Dining POS - Complete Database Schema
 -- Supabase-compatible - Schema Only (NO DATA)
--- Updated: 2026-02-10
+-- Updated: 2026-02-12
 -- ============================================
 -- 
 -- This file contains the complete database schema for the
