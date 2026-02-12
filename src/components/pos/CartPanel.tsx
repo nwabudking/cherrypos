@@ -40,7 +40,7 @@ export const CartPanel = ({
   const hasStockIssues = insufficientStock.length > 0;
 
   return (
-    <Card className="w-80 lg:w-96 rounded-none border-l border-y-0 border-r-0 flex flex-col">
+    <Card className="w-full lg:w-80 xl:w-96 rounded-none lg:border-l border-y-0 border-r-0 border-l-0 lg:border-l flex flex-col">
       <CardHeader className="pb-3 border-b border-border">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">

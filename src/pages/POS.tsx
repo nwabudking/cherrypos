@@ -18,6 +18,7 @@ import { BarSelector } from "@/components/pos/BarSelector";
 import { CashierBarDisplay } from "@/components/pos/CashierBarDisplay";
 import { StockWarningAlert } from "@/components/pos/StockWarningAlert";
 import { HeldOrdersPanel, HeldOrder } from "@/components/pos/HeldOrdersPanel";
+import { MobileCartSheet } from "@/components/pos/MobileCartSheet";
 import { CashierRestrictionAlert } from "@/components/pos/CashierRestrictionAlert";
 import type { MenuCategory } from "@/hooks/useMenu";
 import type { MenuItemStockInfo } from "@/hooks/useBarStock";
@@ -403,7 +404,7 @@ const POS = () => {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] overflow-hidden">
       {/* Left Panel - Menu */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <POSHeader
@@ -467,8 +468,23 @@ const POS = () => {
         />
       </div>
 
-      {/* Right Panel - Cart */}
-      <CartPanel
+      {/* Right Panel - Cart (desktop only) */}
+      <div className="hidden lg:flex">
+        <CartPanel
+          cart={cart}
+          subtotal={subtotal}
+          total={total}
+          onUpdateQuantity={updateQuantity}
+          onRemoveItem={removeFromCart}
+          onClearCart={clearCart}
+          onCheckout={() => setIsCheckoutOpen(true)}
+          insufficientStock={stockValidation.insufficientItems}
+          checkoutDisabled={!stockValidation.valid || cart.length === 0}
+        />
+      </div>
+
+      {/* Mobile/Tablet Cart Sheet */}
+      <MobileCartSheet
         cart={cart}
         subtotal={subtotal}
         total={total}

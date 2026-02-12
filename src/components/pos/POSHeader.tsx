@@ -27,32 +27,32 @@ export const POSHeader = ({
   children,
 }: POSHeaderProps) => {
   return (
-    <div className="p-4 border-b border-border bg-card">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex gap-2">
+    <div className="p-3 md:p-4 border-b border-border bg-card">
+      <div className="flex items-center justify-between gap-2 md:gap-4 flex-wrap">
+        <div className="flex items-center gap-2 md:gap-4 flex-wrap">
+          <div className="flex gap-1 md:gap-2 flex-wrap">
             {orderTypes.map(({ type, label, icon }) => (
               <Button
                 key={type}
                 variant={orderType === type ? "default" : "outline"}
                 size="sm"
                 onClick={() => setOrderType(type)}
-                className="gap-2"
+                className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3"
               >
                 {icon}
-                {label}
+                <span className="hidden sm:inline">{label}</span>
               </Button>
             ))}
           </div>
 
           {orderType === "dine_in" && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Table:</span>
+              <span className="text-xs md:text-sm text-muted-foreground">Table:</span>
               <Input
                 value={tableNumber}
                 onChange={(e) => setTableNumber(e.target.value)}
                 placeholder="e.g. A1"
-                className="w-20 h-9"
+                className="w-16 md:w-20 h-8 md:h-9 text-xs md:text-sm"
               />
             </div>
           )}
