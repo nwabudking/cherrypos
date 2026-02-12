@@ -1,7 +1,7 @@
 -- ============================================
 -- Cherry Dining POS - Grant Definitions
 -- Supabase-compatible - Schema Only
--- Updated: 2026-02-10
+-- Updated: 2026-02-12
 -- ============================================
 
 -- Note: In Supabase, permissions are typically managed through RLS policies

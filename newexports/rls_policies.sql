@@ -1,7 +1,7 @@
 -- ============================================
 -- Cherry Dining POS - Row Level Security Policies
 -- Supabase-compatible - Schema Only
--- Updated: 2026-02-10
+-- Updated: 2026-02-12
 -- ============================================
 
 -- ============================================
