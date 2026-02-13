@@ -170,6 +170,16 @@ const EODReport = () => {
       acc[barId] = (acc[barId] || 0) + order.total_amount;
       return acc;
     }, {} as Record<string, number>),
+    cashierBreakdown: orders.reduce((acc, order) => {
+      const cashierId = order.created_by || "unknown";
+      if (!acc[cashierId]) {
+        acc[cashierId] = { sales: 0, orders: 0, items: 0 };
+      }
+      acc[cashierId].sales += order.total_amount;
+      acc[cashierId].orders += 1;
+      acc[cashierId].items += order.order_items.reduce((s, i) => s + i.quantity, 0);
+      return acc;
+    }, {} as Record<string, { sales: number; orders: number; items: number }>),
   };
 
   const getCashierName = (id: string | null) => {
@@ -401,6 +411,61 @@ const EODReport = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Per-Cashier Sales Breakdown */}
+      {isManager && Object.keys(summary.cashierBreakdown).length > 0 && (
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Sales by Staff Member
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Staff Member</TableHead>
+                    <TableHead className="text-right">Orders</TableHead>
+                    <TableHead className="text-right">Items Sold</TableHead>
+                    <TableHead className="text-right">Total Sales</TableHead>
+                    <TableHead className="text-right">Avg. Order</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(summary.cashierBreakdown)
+                    .sort(([, a], [, b]) => b.sales - a.sales)
+                    .map(([cashierId, data]) => (
+                      <TableRow key={cashierId}>
+                        <TableCell className="font-medium">
+                          {getCashierName(cashierId === "unknown" ? null : cashierId)}
+                        </TableCell>
+                        <TableCell className="text-right">{data.orders}</TableCell>
+                        <TableCell className="text-right">{data.items}</TableCell>
+                        <TableCell className="text-right font-bold">
+                          {formatPrice(data.sales)}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {formatPrice(data.orders > 0 ? data.sales / data.orders : 0)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  <TableRow className="border-t-2">
+                    <TableCell className="font-bold">Total</TableCell>
+                    <TableCell className="text-right font-bold">{summary.transactionCount}</TableCell>
+                    <TableCell className="text-right font-bold">{summary.itemsSold}</TableCell>
+                    <TableCell className="text-right font-bold">{formatPrice(summary.totalSales)}</TableCell>
+                    <TableCell className="text-right font-bold text-muted-foreground">
+                      {formatPrice(summary.transactionCount > 0 ? summary.totalSales / summary.transactionCount : 0)}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
