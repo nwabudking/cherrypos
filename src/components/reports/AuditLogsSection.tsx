@@ -109,21 +109,33 @@ export const AuditLogsSection = () => {
       const { data, error } = await query;
       if (error) throw error;
       
-      // Fetch performer info separately
+      // Fetch performer info from both profiles (auth users) and staff_users (local staff)
       const performerIds = [...new Set(data?.map(log => log.performed_by).filter(Boolean))] as string[];
       let performers: Record<string, { full_name: string | null; email: string | null }> = {};
       
       if (performerIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("id, full_name, email")
-          .in("id", performerIds);
+        const [profilesRes, staffRes] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("id, full_name, email")
+            .in("id", performerIds),
+          supabase
+            .from("staff_users")
+            .select("id, full_name, email")
+            .in("id", performerIds),
+        ]);
         
-        if (profilesData) {
-          performers = profilesData.reduce((acc, p) => {
-            acc[p.id] = { full_name: p.full_name, email: p.email };
-            return acc;
-          }, {} as Record<string, { full_name: string | null; email: string | null }>);
+        // Add profiles first
+        if (profilesRes.data) {
+          profilesRes.data.forEach((p) => {
+            performers[p.id] = { full_name: p.full_name, email: p.email };
+          });
+        }
+        // Staff users override (or fill in) if the ID belongs to a local staff user
+        if (staffRes.data) {
+          staffRes.data.forEach((s) => {
+            performers[s.id] = { full_name: s.full_name, email: s.email };
+          });
         }
       }
       
