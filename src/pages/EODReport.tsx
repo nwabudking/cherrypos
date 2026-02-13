@@ -71,6 +71,7 @@ interface CashierProfile {
   id: string;
   full_name: string | null;
   email: string | null;
+  source: "auth" | "staff";
 }
 
 const EODReport = () => {
@@ -83,15 +84,31 @@ const EODReport = () => {
 
   const { data: bars = [] } = useBars();
 
-  // Fetch all cashiers (for managers)
+  // Fetch all cashiers from both profiles (Supabase auth) and staff_users (local staff)
   const { data: cashiers = [] } = useQuery({
-    queryKey: ["cashiers-list"],
+    queryKey: ["cashiers-list-all"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, email");
-      if (error) throw error;
-      return data as CashierProfile[];
+      const [profilesRes, staffRes] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, email"),
+        supabase.from("staff_users").select("id, full_name, email"),
+      ]);
+
+      const authUsers: CashierProfile[] = (profilesRes.data || []).map((p) => ({
+        id: p.id,
+        full_name: p.full_name,
+        email: p.email,
+        source: "auth" as const,
+      }));
+
+      const staffUsers: CashierProfile[] = (staffRes.data || []).map((s) => ({
+        id: s.id,
+        full_name: s.full_name,
+        email: s.email,
+        source: "staff" as const,
+      }));
+
+      // Merge both, staff_users first so they appear prominently
+      return [...staffUsers, ...authUsers];
     },
     enabled: isManager,
   });
@@ -158,7 +175,9 @@ const EODReport = () => {
   const getCashierName = (id: string | null) => {
     if (!id) return "Unknown";
     const cashier = cashiers.find((c) => c.id === id);
-    return cashier?.full_name || cashier?.email || "Unknown";
+    if (!cashier) return "Unknown";
+    const name = cashier.full_name || cashier.email || "Unknown";
+    return name;
   };
 
   const getBarName = (barId: string | null) => {
@@ -274,10 +293,10 @@ const EODReport = () => {
                 <SelectValue placeholder="All Cashiers" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Cashiers</SelectItem>
+                <SelectItem value="all">All Staff</SelectItem>
                 {cashiers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.full_name || c.email}
+                  <SelectItem key={`${c.source}-${c.id}`} value={c.id}>
+                    {c.full_name || c.email || "Unknown"}{c.source === "staff" ? " (Staff)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
