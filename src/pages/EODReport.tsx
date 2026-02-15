@@ -167,9 +167,14 @@ const EODReport = () => {
     ),
     barBreakdown: orders.reduce((acc, order) => {
       const barId = order.bar_id || "no-bar";
-      acc[barId] = (acc[barId] || 0) + order.total_amount;
+      if (!acc[barId]) {
+        acc[barId] = { sales: 0, orders: 0, items: 0 };
+      }
+      acc[barId].sales += order.total_amount;
+      acc[barId].orders += 1;
+      acc[barId].items += order.order_items.reduce((s, i) => s + i.quantity, 0);
       return acc;
-    }, {} as Record<string, number>),
+    }, {} as Record<string, { sales: number; orders: number; items: number }>),
     cashierBreakdown: orders.reduce((acc, order) => {
       const cashierId = order.created_by || "unknown";
       if (!acc[cashierId]) {
@@ -196,6 +201,19 @@ const EODReport = () => {
     return bar?.name || "Unknown";
   };
 
+  const getBarBreakdownRows = () => {
+    return Object.entries(summary.barBreakdown)
+      .filter(([barId]) => barId !== "no-bar" || Object.keys(summary.barBreakdown).length === 1)
+      .sort(([, a], [, b]) => b.sales - a.sales)
+      .map(([barId, data]) => ({
+        name: getBarName(barId),
+        orders: data.orders,
+        items: data.items,
+        sales: data.sales,
+        avg: data.orders > 0 ? data.sales / data.orders : 0,
+      }));
+  };
+
   const getCashierBreakdownRows = () => {
     return Object.entries(summary.cashierBreakdown)
       .sort(([, a], [, b]) => b.sales - a.sales)
@@ -220,7 +238,18 @@ const EODReport = () => {
       formatPrice(order.total_amount),
     ]);
 
-    // Build combined HTML with cashier breakdown
+    const barBreakdownRows = getBarBreakdownRows();
+    const barBreakdownHTML = barBreakdownRows.length > 0 ? `
+      <h2 style="margin-top: 40px;">Sales by Bar</h2>
+      <table>
+        <thead><tr><th>Bar</th><th>Orders</th><th>Items Sold</th><th>Total Sales</th><th>Avg. Order</th></tr></thead>
+        <tbody>
+          ${barBreakdownRows.map(r => `<tr><td>${r.name}</td><td>${r.orders}</td><td>${r.items}</td><td>${formatPrice(r.sales)}</td><td>${formatPrice(r.avg)}</td></tr>`).join('')}
+          <tr style="border-top: 2px solid #333; font-weight: bold;"><td>Total</td><td>${summary.transactionCount}</td><td>${summary.itemsSold}</td><td>${formatPrice(summary.totalSales)}</td><td>${formatPrice(summary.transactionCount > 0 ? summary.totalSales / summary.transactionCount : 0)}</td></tr>
+        </tbody>
+      </table>
+    ` : '';
+
     const breakdownRows = getCashierBreakdownRows();
     const breakdownHTML = breakdownRows.length > 0 ? `
       <h2 style="margin-top: 40px;">Sales by Staff Member</h2>
@@ -251,7 +280,7 @@ const EODReport = () => {
         tr:nth-child(even) { background-color: #fafafa; }
       </style></head><body>
       <h1>${title}</h1><p>Generated: ${new Date().toLocaleString()}</p>
-      <h2>Orders</h2>${orderTableHTML}${breakdownHTML}
+      <h2>Orders</h2>${orderTableHTML}${barBreakdownHTML}${breakdownHTML}
     </body></html>`);
     printWindow.document.close();
     printWindow.focus();
@@ -271,7 +300,19 @@ const EODReport = () => {
       order.total_amount,
     ]);
 
-    // Add blank separator row + cashier breakdown
+    // Add bar breakdown
+    const barRows = getBarBreakdownRows();
+    if (barRows.length > 0) {
+      rows.push(Array(headers.length).fill(""));
+      rows.push(["Sales by Bar", "", "", "", "", "", "", ""]);
+      rows.push(["Bar", "Orders", "Items Sold", "Total Sales", "Avg. Order", "", "", ""]);
+      barRows.forEach(r => {
+        rows.push([r.name, r.orders, r.items, r.sales, Math.round(r.avg), "", "", ""]);
+      });
+      rows.push(["Total", summary.transactionCount, summary.itemsSold, summary.totalSales, Math.round(summary.transactionCount > 0 ? summary.totalSales / summary.transactionCount : 0), "", "", ""]);
+    }
+
+    // Add cashier breakdown
     const breakdownRows = getCashierBreakdownRows();
     if (breakdownRows.length > 0) {
       rows.push(Array(headers.length).fill(""));
@@ -455,23 +496,46 @@ const EODReport = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-4">
-              {Object.entries(summary.barBreakdown).map(([barId, amount]) => (
-                <div
-                  key={barId}
-                  className="flex items-center gap-3 p-4 rounded-lg border border-border bg-muted/30"
-                >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Store className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {getBarName(barId)}
-                    </p>
-                    <p className="font-bold">{formatPrice(amount)}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bar</TableHead>
+                    <TableHead className="text-right">Orders</TableHead>
+                    <TableHead className="text-right">Items Sold</TableHead>
+                    <TableHead className="text-right">Total Sales</TableHead>
+                    <TableHead className="text-right">Avg. Order</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(summary.barBreakdown)
+                    .sort(([, a], [, b]) => b.sales - a.sales)
+                    .map(([barId, data]) => (
+                      <TableRow key={barId}>
+                        <TableCell className="font-medium">
+                          {getBarName(barId)}
+                        </TableCell>
+                        <TableCell className="text-right">{data.orders}</TableCell>
+                        <TableCell className="text-right">{data.items}</TableCell>
+                        <TableCell className="text-right font-bold">
+                          {formatPrice(data.sales)}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {formatPrice(data.orders > 0 ? data.sales / data.orders : 0)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  <TableRow className="border-t-2">
+                    <TableCell className="font-bold">Total</TableCell>
+                    <TableCell className="text-right font-bold">{summary.transactionCount}</TableCell>
+                    <TableCell className="text-right font-bold">{summary.itemsSold}</TableCell>
+                    <TableCell className="text-right font-bold">{formatPrice(summary.totalSales)}</TableCell>
+                    <TableCell className="text-right font-bold text-muted-foreground">
+                      {formatPrice(summary.transactionCount > 0 ? summary.totalSales / summary.transactionCount : 0)}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
