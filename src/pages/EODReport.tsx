@@ -196,6 +196,18 @@ const EODReport = () => {
     return bar?.name || "Unknown";
   };
 
+  const getCashierBreakdownRows = () => {
+    return Object.entries(summary.cashierBreakdown)
+      .sort(([, a], [, b]) => b.sales - a.sales)
+      .map(([cashierId, data]) => ({
+        name: getCashierName(cashierId === "unknown" ? null : cashierId),
+        orders: data.orders,
+        items: data.items,
+        sales: data.sales,
+        avg: data.orders > 0 ? data.sales / data.orders : 0,
+      }));
+  };
+
   const handleExportPDF = () => {
     const headers = ["Order #", "Time", "Type", "Bar", "Items", "Payment", "Amount"];
     const rows = orders.map(order => [
@@ -207,12 +219,48 @@ const EODReport = () => {
       order.payments.map(p => paymentLabels[p.payment_method] || p.payment_method).join(", "),
       formatPrice(order.total_amount),
     ]);
-    exportTableToPDF(`EOD Report - ${format(selectedDate, "dd MMM yyyy")}`, headers, rows);
+
+    // Build combined HTML with cashier breakdown
+    const breakdownRows = getCashierBreakdownRows();
+    const breakdownHTML = breakdownRows.length > 0 ? `
+      <h2 style="margin-top: 40px;">Sales by Staff Member</h2>
+      <table>
+        <thead><tr><th>Staff Member</th><th>Orders</th><th>Items Sold</th><th>Total Sales</th><th>Avg. Order</th></tr></thead>
+        <tbody>
+          ${breakdownRows.map(r => `<tr><td>${r.name}</td><td>${r.orders}</td><td>${r.items}</td><td>${formatPrice(r.sales)}</td><td>${formatPrice(r.avg)}</td></tr>`).join('')}
+          <tr style="border-top: 2px solid #333; font-weight: bold;"><td>Total</td><td>${summary.transactionCount}</td><td>${summary.itemsSold}</td><td>${formatPrice(summary.totalSales)}</td><td>${formatPrice(summary.transactionCount > 0 ? summary.totalSales / summary.transactionCount : 0)}</td></tr>
+        </tbody>
+      </table>
+    ` : '';
+
+    const title = `EOD Report - ${format(selectedDate, "dd MMM yyyy")}`;
+    const orderTableHTML = `
+      <table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell ?? '-'}</td>`).join('')}</tr>`).join('')}</tbody></table>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+      <style>
+        body { font-family: system-ui, sans-serif; padding: 40px; max-width: 1200px; margin: 0 auto; }
+        h1 { font-size: 24px; margin-bottom: 10px; } h2 { font-size: 18px; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+        th { background-color: #f5f5f5; font-weight: 600; }
+        tr:nth-child(even) { background-color: #fafafa; }
+      </style></head><body>
+      <h1>${title}</h1><p>Generated: ${new Date().toLocaleString()}</p>
+      <h2>Orders</h2>${orderTableHTML}${breakdownHTML}
+    </body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 250);
   };
 
   const handleExportExcel = () => {
     const headers = ["Order #", "Time", "Type", "Bar", "Items", "Payment", "Cashier", "Amount"];
-    const rows = orders.map(order => [
+    const rows: any[][] = orders.map(order => [
       order.order_number,
       format(new Date(order.created_at), "HH:mm"),
       order.order_type.replace("_", " "),
@@ -222,6 +270,19 @@ const EODReport = () => {
       getCashierName(order.created_by),
       order.total_amount,
     ]);
+
+    // Add blank separator row + cashier breakdown
+    const breakdownRows = getCashierBreakdownRows();
+    if (breakdownRows.length > 0) {
+      rows.push(Array(headers.length).fill(""));
+      rows.push(["Sales by Staff Member", "", "", "", "", "", "", ""]);
+      rows.push(["Staff Member", "Orders", "Items Sold", "Total Sales", "Avg. Order", "", "", ""]);
+      breakdownRows.forEach(r => {
+        rows.push([r.name, r.orders, r.items, r.sales, Math.round(r.avg), "", "", ""]);
+      });
+      rows.push(["Total", summary.transactionCount, summary.itemsSold, summary.totalSales, Math.round(summary.transactionCount > 0 ? summary.totalSales / summary.transactionCount : 0), "", "", ""]);
+    }
+
     exportTableToExcel(`EOD_Report_${format(selectedDate, "yyyy-MM-dd")}`, headers, rows);
   };
 
