@@ -166,6 +166,7 @@ const POS = () => {
       discount_amount: 0,
       total_amount: subtotal,
       bar_id: primaryBarId,
+      staff_user_id: isLocalStaffUser ? staffUser?.id : null,
       items: cart.map((item) => ({
         menu_item_id: item.menuItemId,
         item_name: item.name,
