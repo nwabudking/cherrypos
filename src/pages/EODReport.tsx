@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, startOfDay, endOfDay } from "date-fns";
-import { CalendarIcon, Receipt, Users, CreditCard, Banknote, Smartphone, Building, Store, FileDown } from "lucide-react";
+import { CalendarIcon, Receipt, Users, CreditCard, Banknote, Smartphone, Building, Store, FileDown, Eye, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +29,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBars } from "@/hooks/useBars";
 import { exportTableToPDF, exportTableToExcel } from "@/lib/exportUtils";
@@ -62,9 +68,17 @@ interface OrderWithDetails {
   total_amount: number;
   created_at: string;
   created_by: string | null;
+  staff_user_id: string | null;
   bar_id: string | null;
-  order_items: { item_name: string; quantity: number; total_price: number }[];
-  payments: { payment_method: string; amount: number }[];
+  status: string;
+  subtotal: number;
+  vat_amount: number;
+  service_charge: number;
+  discount_amount: number;
+  table_number: string | null;
+  notes: string | null;
+  order_items: { item_name: string; quantity: number; total_price: number; unit_price: number }[];
+  payments: { payment_method: string; amount: number; reference: string | null }[];
 }
 
 interface CashierProfile {
@@ -79,6 +93,7 @@ const EODReport = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedCashier, setSelectedCashier] = useState<string>("all");
   const [selectedBar, setSelectedBar] = useState<string>("all");
+  const [viewingOrder, setViewingOrder] = useState<OrderWithDetails | null>(null);
   
   const isManager = role === "super_admin" || role === "manager";
 
@@ -107,7 +122,6 @@ const EODReport = () => {
         source: "staff" as const,
       }));
 
-      // Merge both, staff_users first so they appear prominently
       return [...staffUsers, ...authUsers];
     },
     enabled: isManager,
@@ -123,33 +137,46 @@ const EODReport = () => {
       let query = supabase
         .from("orders")
         .select(`
-          id, order_number, order_type, total_amount, created_at, created_by, bar_id,
-          order_items(item_name, quantity, total_price),
-          payments(payment_method, amount)
+          id, order_number, order_type, total_amount, created_at, created_by, staff_user_id, bar_id,
+          status, subtotal, vat_amount, service_charge, discount_amount, table_number, notes,
+          order_items(item_name, quantity, total_price, unit_price),
+          payments(payment_method, amount, reference)
         `)
         .gte("created_at", start)
         .lte("created_at", end)
         .eq("status", "completed")
         .order("created_at", { ascending: true });
 
-      // Filter by cashier
-      if (selectedCashier !== "all") {
-        query = query.eq("created_by", selectedCashier);
-      } else if (!isManager) {
-        // Non-managers can only see their own
-        query = query.eq("created_by", user?.id);
-      }
-
       // Filter by bar
       if (selectedBar !== "all") {
         query = query.eq("bar_id", selectedBar);
       }
 
+      // Non-managers can only see their own
+      if (!isManager) {
+        query = query.eq("created_by", user?.id);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
-      return data as OrderWithDetails[];
+      
+      let result = data as OrderWithDetails[];
+
+      // Filter by selected cashier (check both created_by and staff_user_id)
+      if (selectedCashier !== "all") {
+        result = result.filter(
+          (o) => o.created_by === selectedCashier || o.staff_user_id === selectedCashier
+        );
+      }
+
+      return result;
     },
   });
+
+  // Helper to get effective staff identifier for an order
+  const getOrderStaffId = (order: OrderWithDetails): string => {
+    return order.staff_user_id || order.created_by || "unknown";
+  };
 
   // Calculate summary statistics
   const summary = {
@@ -176,7 +203,7 @@ const EODReport = () => {
       return acc;
     }, {} as Record<string, { sales: number; orders: number; items: number }>),
     cashierBreakdown: orders.reduce((acc, order) => {
-      const cashierId = order.created_by || "unknown";
+      const cashierId = getOrderStaffId(order);
       if (!acc[cashierId]) {
         acc[cashierId] = { sales: 0, orders: 0, items: 0 };
       }
@@ -191,8 +218,16 @@ const EODReport = () => {
     if (!id) return "Unknown";
     const cashier = cashiers.find((c) => c.id === id);
     if (!cashier) return "Unknown";
-    const name = cashier.full_name || cashier.email || "Unknown";
-    return name;
+    return cashier.full_name || cashier.email || "Unknown";
+  };
+
+  const getOrderStaffName = (order: OrderWithDetails) => {
+    // Prefer staff_user_id (local staff), fall back to created_by (auth user)
+    if (order.staff_user_id) {
+      const name = getCashierName(order.staff_user_id);
+      if (name !== "Unknown") return name;
+    }
+    return getCashierName(order.created_by);
   };
 
   const getBarName = (barId: string | null) => {
@@ -227,12 +262,13 @@ const EODReport = () => {
   };
 
   const handleExportPDF = () => {
-    const headers = ["Order #", "Time", "Type", "Bar", "Items", "Payment", "Amount"];
+    const headers = ["Order #", "Time", "Type", "Bar", "Staff", "Items", "Payment", "Amount"];
     const rows = orders.map(order => [
       order.order_number,
       format(new Date(order.created_at), "HH:mm"),
       order.order_type.replace("_", " "),
       getBarName(order.bar_id),
+      getOrderStaffName(order),
       order.order_items.length.toString(),
       order.payments.map(p => paymentLabels[p.payment_method] || p.payment_method).join(", "),
       formatPrice(order.total_amount),
@@ -288,15 +324,15 @@ const EODReport = () => {
   };
 
   const handleExportExcel = () => {
-    const headers = ["Order #", "Time", "Type", "Bar", "Items", "Payment", "Cashier", "Amount"];
+    const headers = ["Order #", "Time", "Type", "Bar", "Staff", "Items", "Payment", "Amount"];
     const rows: any[][] = orders.map(order => [
       order.order_number,
       format(new Date(order.created_at), "HH:mm"),
       order.order_type.replace("_", " "),
       getBarName(order.bar_id),
+      getOrderStaffName(order),
       order.order_items.length,
       order.payments.map(p => paymentLabels[p.payment_method] || p.payment_method).join(", "),
-      getCashierName(order.created_by),
       order.total_amount,
     ]);
 
@@ -662,11 +698,12 @@ const EODReport = () => {
                     <TableHead>Order #</TableHead>
                     <TableHead>Time</TableHead>
                     <TableHead>Type</TableHead>
-                    {isManager && <TableHead>Bar</TableHead>}
+                    <TableHead>Bar</TableHead>
+                    <TableHead>Staff</TableHead>
                     <TableHead>Items</TableHead>
                     <TableHead>Payment</TableHead>
-                    {isManager && <TableHead>Cashier</TableHead>}
                     <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-center">View</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -683,13 +720,14 @@ const EODReport = () => {
                           {order.order_type.replace("_", " ")}
                         </Badge>
                       </TableCell>
-                      {isManager && (
-                        <TableCell>
-                          <Badge variant="secondary" className="text-xs">
-                            {getBarName(order.bar_id)}
-                          </Badge>
-                        </TableCell>
-                      )}
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">
+                          {getBarName(order.bar_id)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {getOrderStaffName(order)}
+                      </TableCell>
                       <TableCell>
                         <div className="max-w-[200px]">
                           {order.order_items.slice(0, 2).map((item, i) => (
@@ -708,11 +746,17 @@ const EODReport = () => {
                       <TableCell>
                         {order.payments.map((p) => paymentLabels[p.payment_method] || p.payment_method).join(", ")}
                       </TableCell>
-                      {isManager && (
-                        <TableCell>{getCashierName(order.created_by)}</TableCell>
-                      )}
                       <TableCell className="text-right font-medium">
                         {formatPrice(order.total_amount)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setViewingOrder(order)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -722,6 +766,106 @@ const EODReport = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Order Details Dialog */}
+      <Dialog open={!!viewingOrder} onOpenChange={(open) => !open && setViewingOrder(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              Order {viewingOrder?.order_number}
+            </DialogTitle>
+          </DialogHeader>
+          {viewingOrder && (
+            <div className="space-y-4">
+              {/* Order Info */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Date & Time</p>
+                  <p className="font-medium">{format(new Date(viewingOrder.created_at), "dd MMM yyyy, HH:mm")}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Type</p>
+                  <p className="font-medium capitalize">{viewingOrder.order_type.replace("_", " ")}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Staff</p>
+                  <p className="font-medium">{getOrderStaffName(viewingOrder)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Bar</p>
+                  <p className="font-medium">{getBarName(viewingOrder.bar_id)}</p>
+                </div>
+                {viewingOrder.table_number && (
+                  <div>
+                    <p className="text-muted-foreground">Table</p>
+                    <p className="font-medium">{viewingOrder.table_number}</p>
+                  </div>
+                )}
+                {viewingOrder.notes && (
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground">Notes</p>
+                    <p className="font-medium">{viewingOrder.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Order Items */}
+              <div>
+                <p className="text-sm font-semibold mb-2">Items</p>
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead className="text-center">Qty</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {viewingOrder.order_items.map((item, i) => (
+                        <TableRow key={i}>
+                          <TableCell>{item.item_name}</TableCell>
+                          <TableCell className="text-center">{item.quantity}</TableCell>
+                          <TableCell className="text-right">{formatPrice(item.unit_price)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatPrice(item.total_price)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Payment Info */}
+              <div>
+                <p className="text-sm font-semibold mb-2">Payments</p>
+                <div className="space-y-2">
+                  {viewingOrder.payments.map((p, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const Icon = paymentIcons[p.payment_method] || CreditCard;
+                          return <Icon className="h-4 w-4 text-muted-foreground" />;
+                        })()}
+                        <span className="text-sm">{paymentLabels[p.payment_method] || p.payment_method}</span>
+                        {p.reference && <span className="text-xs text-muted-foreground">({p.reference})</span>}
+                      </div>
+                      <span className="font-bold">{formatPrice(p.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Order Total */}
+              <div className="flex justify-between items-center pt-3 border-t border-border">
+                <span className="text-lg font-bold">Total</span>
+                <span className="text-lg font-bold text-primary">{formatPrice(viewingOrder.total_amount)}</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

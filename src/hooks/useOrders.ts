@@ -24,6 +24,7 @@ export interface CreateOrderData {
   discount_amount: number;
   total_amount: number;
   bar_id?: string | null;
+  staff_user_id?: string | null;
   items: Array<{
     menu_item_id: string;
     item_name: string;
@@ -206,6 +207,7 @@ export function useCreateOrder() {
           discount_amount: data.discount_amount,
           total_amount: data.total_amount,
           bar_id: data.bar_id,
+          staff_user_id: data.staff_user_id || null,
           status: 'pending',
           created_by: user?.id,
         })

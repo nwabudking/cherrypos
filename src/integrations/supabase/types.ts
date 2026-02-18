@@ -521,6 +521,7 @@ export type Database = {
           receipt_printed_at: string | null
           receipt_printed_by: string | null
           service_charge: number
+          staff_user_id: string | null
           status: string
           subtotal: number
           table_number: string | null
@@ -541,6 +542,7 @@ export type Database = {
           receipt_printed_at?: string | null
           receipt_printed_by?: string | null
           service_charge?: number
+          staff_user_id?: string | null
           status?: string
           subtotal?: number
           table_number?: string | null
@@ -561,6 +563,7 @@ export type Database = {
           receipt_printed_at?: string | null
           receipt_printed_by?: string | null
           service_charge?: number
+          staff_user_id?: string | null
           status?: string
           subtotal?: number
           table_number?: string | null
@@ -574,6 +577,13 @@ export type Database = {
             columns: ["bar_id"]
             isOneToOne: false
             referencedRelation: "bars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_staff_user_id_fkey"
+            columns: ["staff_user_id"]
+            isOneToOne: false
+            referencedRelation: "staff_users"
             referencedColumns: ["id"]
           },
         ]
