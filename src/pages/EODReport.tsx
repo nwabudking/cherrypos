@@ -215,19 +215,23 @@ const EODReport = () => {
   };
 
   const getCashierName = (id: string | null) => {
-    if (!id) return "Unknown";
+    if (!id) return null;
     const cashier = cashiers.find((c) => c.id === id);
-    if (!cashier) return "Unknown";
-    return cashier.full_name || cashier.email || "Unknown";
+    if (!cashier) return null;
+    return cashier.full_name || cashier.email || null;
   };
 
   const getOrderStaffName = (order: OrderWithDetails) => {
     // Prefer staff_user_id (local staff), fall back to created_by (auth user)
     if (order.staff_user_id) {
       const name = getCashierName(order.staff_user_id);
-      if (name !== "Unknown") return name;
+      if (name) return name;
     }
-    return getCashierName(order.created_by);
+    if (order.created_by) {
+      const name = getCashierName(order.created_by);
+      if (name) return name;
+    }
+    return "Unattributed";
   };
 
   const getBarName = (barId: string | null) => {
@@ -253,7 +257,7 @@ const EODReport = () => {
     return Object.entries(summary.cashierBreakdown)
       .sort(([, a], [, b]) => b.sales - a.sales)
       .map(([cashierId, data]) => ({
-        name: getCashierName(cashierId === "unknown" ? null : cashierId),
+        name: cashierId === "unknown" ? "Unattributed" : (getCashierName(cashierId) || "Unattributed"),
         orders: data.orders,
         items: data.items,
         sales: data.sales,
@@ -604,7 +608,7 @@ const EODReport = () => {
                     .map(([cashierId, data]) => (
                       <TableRow key={cashierId}>
                         <TableCell className="font-medium">
-                          {getCashierName(cashierId === "unknown" ? null : cashierId)}
+                          {cashierId === "unknown" ? "Unattributed" : (getCashierName(cashierId) || "Unattributed")}
                         </TableCell>
                         <TableCell className="text-right">{data.orders}</TableCell>
                         <TableCell className="text-right">{data.items}</TableCell>
